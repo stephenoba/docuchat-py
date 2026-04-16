@@ -15,3 +15,17 @@ uv pip install -r requirements/local.txt
 ```bash
 fastapi dev main.py
 ```
+
+## Migrations
+
+### Create a migration
+
+```bash
+alembic revision --autogenerate -m "Initial migrations"
+```
+
+### Upgrade to latest migration
+
+```bash
+alembic upgrade head
+```

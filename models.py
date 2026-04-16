@@ -3,6 +3,8 @@ from datetime import datetime
 from typing import List
 from sqlmodel import Field, SQLModel, Relationship
 
+from dbmanager import QueryManager
+
 __all__ = [
     "User",
     "Role",
@@ -40,6 +42,8 @@ class User(SQLModel, table=True):
     conversations: List["Conversation"] = Relationship(back_populates="user")
     usage_logs: List["UsageLog"] = Relationship(back_populates="user")
 
+    objects = QueryManager()
+
 
 class Role(SQLModel, table=True):
     """Role model
@@ -57,6 +61,8 @@ class Role(SQLModel, table=True):
 
     users: List["User"] = Relationship(back_populates="role")
     permissions: List["RolePermission"] = Relationship(back_populates="role")
+
+    objects = QueryManager()
 
 
 class Permission(SQLModel, table=True):
@@ -76,6 +82,8 @@ class Permission(SQLModel, table=True):
 
     roles: List["RolePermission"] = Relationship(back_populates="permissions")
 
+    objects = QueryManager()
+
 
 class UserRole(SQLModel, table=True):
     """UserRole model
@@ -94,6 +102,8 @@ class UserRole(SQLModel, table=True):
 
     user: User = Relationship(back_populates="roles")
     role: Role = Relationship(back_populates="users")
+
+    objects = QueryManager()
 
 
 class RolePermission(SQLModel, table=True):
@@ -138,6 +148,8 @@ class Document(SQLModel, table=True):
     chunks: List["Chunk"] = Relationship(back_populates="document")
     messages: List["Message"] = Relationship(back_populates="document")
 
+    objects = QueryManager()
+
 
 class Chunk(SQLModel, table=True):
     """Chunk model
@@ -156,6 +168,8 @@ class Chunk(SQLModel, table=True):
 
     document: Document = Relationship(back_populates="chunks")
 
+    objects = QueryManager()
+
     
 class Conversation(SQLModel, table=True):
     """Conversation model
@@ -173,6 +187,9 @@ class Conversation(SQLModel, table=True):
 
     user: User = Relationship(back_populates="conversations")
     messages: List["Message"] = Relationship(back_populates="conversation")
+
+    objects = QueryManager()
+
 
 class Message(SQLModel, table=True):
     """Message model
@@ -198,6 +215,9 @@ class Message(SQLModel, table=True):
     conversation: Conversation = Relationship(back_populates="messages")
     document: Document | None = Relationship(back_populates="messages")
 
+    objects = QueryManager()
+
+
 class UsageLog(SQLModel, table=True):
     """UsageLog model
     """
@@ -216,7 +236,9 @@ class UsageLog(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
     user: User = Relationship(back_populates="usage_logs")
-    
+
+    objects = QueryManager()
+
 
 class AITrace(SQLModel, table=True):
     """AITrace model
@@ -234,3 +256,5 @@ class AITrace(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
     user: User = Relationship(back_populates="ai_traces")
+
+    objects = QueryManager()
