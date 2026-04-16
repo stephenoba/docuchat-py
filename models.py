@@ -1,7 +1,21 @@
 import uuid
+from datetime import datetime
 from typing import List
 from sqlmodel import Field, SQLModel, Relationship
 
+__all__ = [
+    "User",
+    "Role",
+    "Permission",
+    "UserRole",
+    "RolePermission",
+    "Document",
+    "Chunk",
+    "Conversation",
+    "Message",
+    "UsageLog",
+    "AITrace",
+]
 
 class User(SQLModel, table=True):
     """User model
@@ -197,7 +211,8 @@ class UsageLog(SQLModel, table=True):
     action: str
     tokens: int
     cost_usd: float
-    metadata: str | None = None
+    # In SQLModel and SQLAlchemy, the attribute name metadata is strictly reserved because it stores the central collection of Table objects and schema constructs for your database.
+    log_metadata: str | None = None
     created_at: datetime = Field(default_factory=datetime.now)
 
     user: User = Relationship(back_populates="usage_logs")
