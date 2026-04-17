@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, ClassVar
 from sqlmodel import Field, SQLModel, Relationship
 
-from dbmanager import QueryManager
+from dbmanager import QueryManager, UserManager
 
 __all__ = [
     "User",
@@ -41,8 +41,13 @@ class User(SQLModel, table=True):
     documents: List["Document"] = Relationship(back_populates="user")
     conversations: List["Conversation"] = Relationship(back_populates="user")
     usage_logs: List["UsageLog"] = Relationship(back_populates="user")
+    ai_traces: List["AITrace"] = Relationship(back_populates="user")
+    roles: List["UserRole"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"foreign_keys": "UserRole.user_id"}
+    )
 
-    objects = QueryManager()
+    objects: ClassVar[UserManager] = UserManager()
 
 
 class Role(SQLModel, table=True):
@@ -59,10 +64,10 @@ class Role(SQLModel, table=True):
     is_default: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.now)
 
-    users: List["User"] = Relationship(back_populates="role")
+    users: List["UserRole"] = Relationship(back_populates="role")
     permissions: List["RolePermission"] = Relationship(back_populates="role")
 
-    objects = QueryManager()
+    objects: ClassVar[QueryManager] = QueryManager()
 
 
 class Permission(SQLModel, table=True):
@@ -80,9 +85,9 @@ class Permission(SQLModel, table=True):
     action: str
     created_at: datetime = Field(default_factory=datetime.now)
 
-    roles: List["RolePermission"] = Relationship(back_populates="permissions")
+    roles: List["RolePermission"] = Relationship(back_populates="permission")
 
-    objects = QueryManager()
+    objects: ClassVar[QueryManager] = QueryManager()
 
 
 class UserRole(SQLModel, table=True):
@@ -100,10 +105,13 @@ class UserRole(SQLModel, table=True):
     assigned_at: datetime = Field(default_factory=datetime.now)
     created_at: datetime = Field(default_factory=datetime.now)
 
-    user: User = Relationship(back_populates="roles")
+    user: User = Relationship(
+        back_populates="roles",
+        sa_relationship_kwargs={"foreign_keys": "UserRole.user_id"}
+    )
     role: Role = Relationship(back_populates="users")
 
-    objects = QueryManager()
+    objects: ClassVar[QueryManager] = QueryManager()
 
 
 class RolePermission(SQLModel, table=True):
@@ -121,6 +129,8 @@ class RolePermission(SQLModel, table=True):
 
     role: Role = Relationship(back_populates="permissions")
     permission: Permission = Relationship(back_populates="roles")
+
+    objects: ClassVar[QueryManager] = QueryManager()
 
 
 class Document(SQLModel, table=True):
@@ -148,8 +158,7 @@ class Document(SQLModel, table=True):
     chunks: List["Chunk"] = Relationship(back_populates="document")
     messages: List["Message"] = Relationship(back_populates="document")
 
-    objects = QueryManager()
-
+    objects: ClassVar[QueryManager] = QueryManager()
 
 class Chunk(SQLModel, table=True):
     """Chunk model
@@ -168,7 +177,7 @@ class Chunk(SQLModel, table=True):
 
     document: Document = Relationship(back_populates="chunks")
 
-    objects = QueryManager()
+    objects: ClassVar[QueryManager] = QueryManager()
 
     
 class Conversation(SQLModel, table=True):
@@ -188,7 +197,7 @@ class Conversation(SQLModel, table=True):
     user: User = Relationship(back_populates="conversations")
     messages: List["Message"] = Relationship(back_populates="conversation")
 
-    objects = QueryManager()
+    objects: ClassVar[QueryManager] = QueryManager()
 
 
 class Message(SQLModel, table=True):
@@ -215,7 +224,7 @@ class Message(SQLModel, table=True):
     conversation: Conversation = Relationship(back_populates="messages")
     document: Document | None = Relationship(back_populates="messages")
 
-    objects = QueryManager()
+    objects: ClassVar[QueryManager] = QueryManager()
 
 
 class UsageLog(SQLModel, table=True):
@@ -237,7 +246,7 @@ class UsageLog(SQLModel, table=True):
 
     user: User = Relationship(back_populates="usage_logs")
 
-    objects = QueryManager()
+    objects: ClassVar[QueryManager] = QueryManager()
 
 
 class AITrace(SQLModel, table=True):
@@ -257,4 +266,4 @@ class AITrace(SQLModel, table=True):
 
     user: User = Relationship(back_populates="ai_traces")
 
-    objects = QueryManager()
+    objects: ClassVar[QueryManager] = QueryManager()
