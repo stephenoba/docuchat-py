@@ -1,4 +1,4 @@
-from models.models import User
+from models import User
 # since we are using alembic to manage migrations, ensure to migrate before running this script
 # alembic upgrade head
 

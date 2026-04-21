@@ -3,4 +3,7 @@ sqlmodel==0.0.38
 alembic==1.18.4
 
 python-decouple==3.8
+
 bcrypt==5.0.0
+pyjwt==2.12.1
+pwdlib[argon2]
