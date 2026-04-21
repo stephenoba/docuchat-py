@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, ClassVar
 from sqlmodel import Field, SQLModel, Relationship
 
-from dbmanager import QueryManager, UserManager
+from .dbmanager import QueryManager, UserManager
 
 __all__ = [
     "User",

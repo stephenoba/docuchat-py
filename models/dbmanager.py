@@ -7,7 +7,8 @@ from decouple import config as _config
 import bcrypt
 
 DATABASE_URL = _config("DATABASE_URL", default="sqlite:///../test.db", cast=str)
-engine = create_engine(DATABASE_URL)
+DEBUG = _config("DEBUG", default=False, cast=bool)
+engine = create_engine(DATABASE_URL, echo=DEBUG)
 
 class DBManager:
     def __init__(self):
@@ -29,7 +30,7 @@ class QueryManager(DBManager):
     def __set_name__(self, owner, name):
         self.model = owner
 
-    def get_all(self):
+    def all(self):
         with Session(self.engine) as session:
             return session.query(self.model).all()
 
@@ -62,9 +63,13 @@ class QueryManager(DBManager):
 
     def delete_all(self):
         with Session(self.engine) as session:
-            session.query(self.model).delete()
-            session.commit()
-            return True
+            try:
+                session.query(self.model).delete()
+                session.commit()
+                return True
+            except Exception as e:
+                session.rollback()
+                return False
 
     def save(self, model: SQLModel):
         with Session(self.engine) as session:
