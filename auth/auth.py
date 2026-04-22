@@ -6,6 +6,7 @@ from pwdlib import PasswordHash
 
 from config import get_settings
 from models import User, RefreshToken
+from schemas.auth import TokenResponse
 from auth.auth_errors import UserNotFoundError, UserAlreadyExistsError, InactiveUserError, InvalidPasswordError
 
 settings = get_settings()
@@ -65,11 +66,12 @@ def create_refresh_token(user: User) -> str:
     )
     return token
 
-def create_tokens(user: User,) -> dict:
-    return {
-        "access_token": create_access_token(user),
-        "refresh_token": create_refresh_token(user),
-    }
+def create_tokens(user: User) -> TokenResponse:
+    return TokenResponse(
+        access_token=create_access_token(user),
+        refresh_token=create_refresh_token(user),
+        token_type="Bearer",
+    )
 
 def verify_access_token(token: str) -> dict:
     try:

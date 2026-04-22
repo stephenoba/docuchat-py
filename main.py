@@ -1,13 +1,21 @@
-from fastapi import FastAPI
-from config import get_settings
-from pwdlib import PasswordHash
+from typing import Annotated
 
+from fastapi import FastAPI, Depends
+from fastapi.security import OAuth2PasswordBearer
+
+from config import get_settings
+from api.v1 import api_v1_router
 
 settings = get_settings()
 
-password_hash = PasswordHash.recommended()
+oauth2_password_bearer = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 app = FastAPI()
+
+app.include_router(api_v1_router, prefix="/api/v1")
+
+def get_current_user(token: Annotated[str, Depends(oauth2_password_bearer)]):
+    return token
 
 @app.get("/health")
 def health_check():
