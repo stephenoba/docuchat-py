@@ -1,7 +1,10 @@
+import logging
+
 from pathlib import Path
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 
 # class RedisSettings(BaseModel):

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 
 from auth.auth import register_user
 from auth.auth_errors import UserAlreadyExistsError

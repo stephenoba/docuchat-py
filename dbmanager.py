@@ -1,4 +1,5 @@
 import uuid
+import logging
 from datetime import datetime
 
 from sqlmodel import SQLModel, select
@@ -6,6 +7,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import joinedload, selectinload
 
 from config import get_settings
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 # Ensure using aiosqlite for SQLite
@@ -90,6 +93,7 @@ class QueryManager(DBManager):
                 await session.commit()
                 return True
             except Exception as e:
+                logger.error(f"Error deleting all {self.model.__name__}s: {e}")
                 await session.rollback()
                 return False
 
