@@ -1,9 +1,11 @@
 from fastapi import FastAPI
-from decouple import config
+from config import get_settings
 from pwdlib import PasswordHash
 
 
-SECRET_KEY = config("SECRET_KEY")
+settings = get_settings()
+
+password_hash = PasswordHash.recommended()
 
 app = FastAPI()
 

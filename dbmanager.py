@@ -2,13 +2,12 @@ from datetime import datetime
 
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.orm import joinedload, selectinload
-from decouple import config as _config
 
-import bcrypt
+from config import get_settings
 
-DATABASE_URL = _config("DATABASE_URL", default="sqlite:///../test.db", cast=str)
-DEBUG = _config("DEBUG", default=False, cast=bool)
-engine = create_engine(DATABASE_URL, echo=DEBUG)
+settings = get_settings()
+engine = create_engine(settings.DATABASE_URL, echo=settings.DEBUG)
+
 
 class DBManager:
     def __init__(self):
@@ -80,22 +79,8 @@ class QueryManager(DBManager):
 
 
 class UserManager(QueryManager):
-    def hash_password(self, password: str):
-        password = password.encode("utf-8")
-        
-        salt = bcrypt.gensalt()
-        hashed_password = bcrypt.hashpw(password, salt)
-        return hashed_password.decode("utf-8")
-        
-
-    def verify_password(self, password: str, hashed_password: str):
-        password = password.encode("utf-8")
-        hashed_password = hashed_password.encode("utf-8")
-        return bcrypt.checkpw(password, hashed_password)
-
     def create(self, **kwargs):
-        kwargs["password_hash"] = self.hash_password(kwargs["password_hash"])
+        from auth import create_password_hash
+        kwargs["username"] = kwargs["email"]
+        kwargs["password_hash"] = create_password_hash(kwargs["password_hash"])
         return super().create(**kwargs)
-        
-
-    

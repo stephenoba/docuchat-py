@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, ClassVar
 from sqlmodel import Field, SQLModel, Relationship
 
-from .dbmanager import QueryManager, UserManager
+from dbmanager import QueryManager, UserManager
 
 __all__ = [
     "User",
@@ -46,6 +46,7 @@ class User(SQLModel, table=True):
         back_populates="user",
         sa_relationship_kwargs={"foreign_keys": "UserRole.user_id"}
     )
+    refresh_tokens: List["RefreshToken"] = Relationship(back_populates="user")
 
     objects: ClassVar[UserManager] = UserManager()
 
@@ -265,5 +266,26 @@ class AITrace(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
     user: User = Relationship(back_populates="ai_traces")
+
+    objects: ClassVar[QueryManager] = QueryManager()
+
+
+class RefreshToken(SQLModel, table=True):
+    """RefreshToken model
+    """
+    id: uuid.UUID = Field(
+        default_factory=uuid.uuid4,
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
+    user_id: uuid.UUID = Field(index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE")
+    token: str = Field(index=True, unique=True, nullable=False)
+    is_revoked: bool = Field(default=False)
+    is_used: bool = Field(default=False)
+    expires_at: datetime
+    created_at: datetime = Field(default_factory=datetime.now)
+
+    user: User = Relationship(back_populates="refresh_tokens")
 
     objects: ClassVar[QueryManager] = QueryManager()
