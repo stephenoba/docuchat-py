@@ -8,9 +8,9 @@ from schemas.auth import UserRegisterRequest, UserResponse
 auth_router = APIRouter()
 
 @auth_router.post("/register", response_model=BaseResponse[UserResponse], status_code=status.HTTP_201_CREATED)
-def register(user_data: UserRegisterRequest):
+async def register(user_data: UserRegisterRequest):
     try:
-        user = register_user(
+        user = await register_user(
             email=user_data.email,
             password=user_data.password,
             tier=user_data.tier
@@ -28,10 +28,10 @@ def register(user_data: UserRegisterRequest):
         )
 
 @auth_router.post("/token")
-def token():
+async def token():
     pass
 
 @auth_router.post("/refresh")
-def refresh():
+async def refresh():
     pass
 

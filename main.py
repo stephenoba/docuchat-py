@@ -14,9 +14,9 @@ app = FastAPI()
 
 app.include_router(api_v1_router, prefix="/api/v1")
 
-def get_current_user(token: Annotated[str, Depends(oauth2_password_bearer)]):
+async def get_current_user(token: Annotated[str, Depends(oauth2_password_bearer)]):
     return token
 
 @app.get("/health")
-def health_check():
+async def health_check():
     return {"status": "ok"}

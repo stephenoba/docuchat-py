@@ -19,28 +19,28 @@ def create_password_hash(password: str) -> str:
 def verify_password(password: str, hashed_password: str) -> bool:
     return password_hash.verify(password, hashed_password)
 
-def get_user(username: str) -> User:
-    return User.objects.get(username=username)
+async def get_user(username: str) -> User:
+    return await User.objects.get(username=username)
 
-def register_user(email: str, password: str, tier: str = "free", is_admin: bool = False) -> User:
+async def register_user(email: str, password: str, tier: str = "free", is_admin: bool = False) -> User:
     # since the username field is populated with the user's email and the username feild is indexed, we can use the email to check for existing users and it will be faster than querying the email field
-    user = User.objects.get(username=email)
+    user = await User.objects.get(username=email)
     if user:
         raise UserAlreadyExistsError()
     # TODO: Create test for password strenght and conformity to standards
     password_hash = create_password_hash(password)
-    user = User.objects.create(email=email, password_hash=password_hash, tier=tier)
+    user = await User.objects.create(email=email, password_hash=password_hash, tier=tier)
     return user
 
-def authenticate_user(username: str, password: str) -> bool:
-    user = get_user(username)
+async def authenticate_user(username: str, password: str) -> bool:
+    user = await get_user(username)
     if not user:
         raise UserNotFoundError()
     if not user.is_active:
         raise InactiveUserError()
     if not verify_password(password, user.password_hash):
         raise InvalidPasswordError()
-    return create_tokens(user)
+    return await create_tokens(user)
 
 def create_access_token(user: User) -> str:
     payload = {
@@ -51,7 +51,7 @@ def create_access_token(user: User) -> str:
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
-def create_refresh_token(user: User) -> str:
+async def create_refresh_token(user: User) -> str:
     payload = {
         "sub": str(user.id),
         "tier": user.tier,
@@ -59,17 +59,17 @@ def create_refresh_token(user: User) -> str:
         "type": "refresh"
     }
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    RefreshToken.objects.create(
+    await RefreshToken.objects.create(
         user_id=user.id,
         token=token,
         expires_at=datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     return token
 
-def create_tokens(user: User) -> TokenResponse:
+async def create_tokens(user: User) -> TokenResponse:
     return TokenResponse(
         access_token=create_access_token(user),
-        refresh_token=create_refresh_token(user),
+        refresh_token=await create_refresh_token(user),
         token_type="Bearer",
     )
 
@@ -95,9 +95,9 @@ def verify_refresh_token(token: str) -> dict:
     except jwt.InvalidTokenError:
         raise ValueError("Invalid token")
 
-def refresh_access_token(self, refresh_token: str) -> str:
+async def refresh_access_token(refresh_token_str: str) -> TokenResponse:
     try:
-        refresh_token = RefreshToken.objects.get(token=refresh_token)
+        refresh_token = await RefreshToken.objects.get(token=refresh_token_str)
         if not refresh_token:
             raise ValueError("Invalid refresh token")
         if refresh_token.is_revoked:
@@ -107,8 +107,8 @@ def refresh_access_token(self, refresh_token: str) -> str:
         if refresh_token.is_used:
             raise ValueError("Refresh token is used")
         refresh_token.is_used = True
-        refresh_token.save()
+        await RefreshToken.objects.save(refresh_token)
         user = refresh_token.user
-        return self.create_token(user)
+        return await create_tokens(user)
     except ValueError as e:
         raise ValueError(e)

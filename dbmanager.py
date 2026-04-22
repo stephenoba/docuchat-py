@@ -1,88 +1,107 @@
+import uuid
 from datetime import datetime
 
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel, select
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import joinedload, selectinload
 
 from config import get_settings
 
 settings = get_settings()
-engine = create_engine(settings.DATABASE_URL, echo=settings.DEBUG)
+# Ensure using aiosqlite for SQLite
+DATABASE_URL = settings.DATABASE_URL
+if DATABASE_URL.startswith("sqlite:///"):
+    DATABASE_URL = DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
+
+engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG)
+async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
 class DBManager:
     def __init__(self):
         self.engine = engine
 
-    def create_db_and_tables(self):
-        SQLModel.metadata.create_all(self.engine)
+    async def create_db_and_tables(self):
+        async with self.engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.create_all)
 
-    def drop_db_and_tables(self):
-        SQLModel.metadata.drop_all(self.engine)
+    async def drop_db_and_tables(self):
+        async with self.engine.begin() as conn:
+            await conn.run_sync(SQLModel.metadata.drop_all)
 
 
 class QueryManager(DBManager):
-    def __init__(self, session: Session = None):
+    def __init__(self):
         super().__init__()
-        self.session = session
         self.model = None
 
     def __set_name__(self, owner, name):
         self.model = owner
 
-    def all(self):
-        with Session(self.engine) as session:
-            return session.query(self.model).all()
+    async def all(self):
+        async with async_session() as session:
+            statement = select(self.model)
+            result = await session.execute(statement)
+            return result.scalars().all()
 
-    def get(self, **kwargs):
-        with Session(self.engine) as session:
-            return session.query(self.model).filter_by(**kwargs).first()
+    async def get(self, **kwargs):
+        async with async_session() as session:
+            statement = select(self.model).filter_by(**kwargs)
+            result = await session.execute(statement)
+            return result.scalars().first()
 
-    def get_by_id(self, id: int):
-        with Session(self.engine) as session:
-            return session.get(self.model, id)
+    async def get_by_id(self, id: bytes | str | uuid.UUID):
+        async with async_session() as session:
+            return await session.get(self.model, id)
 
-    def select_related(self, *args):
-        with Session(self.engine) as session:
-            return session.query(self.model).options(selectinload(*args)).all()
+    async def select_related(self, *args):
+        async with async_session() as session:
+            statement = select(self.model).options(selectinload(*args))
+            result = await session.execute(statement)
+            return result.scalars().all()
 
-    def select_joined(self, *args):
-        with Session(self.engine) as session:
-            return session.query(self.model).options(joinedload(*args)).all()
+    async def select_joined(self, *args):
+        async with async_session() as session:
+            statement = select(self.model).options(joinedload(*args))
+            result = await session.execute(statement)
+            return result.scalars().all()
 
-    def create(self, **kwargs):
+    async def create(self, **kwargs):
         model = self.model(**kwargs)
-        return self.save(model)
+        return await self.save(model)
 
-    def update(self, model: SQLModel):
+    async def update(self, model: SQLModel):
         if hasattr(model, "updated_at"):
             model.updated_at = datetime.now()
-        return self.save(model)
+        return await self.save(model)
 
-    def delete(self, model: SQLModel):
-        with Session(self.engine) as session:
-            session.delete(model)
-            session.commit()
+    async def delete(self, model: SQLModel):
+        async with async_session() as session:
+            await session.delete(model)
+            await session.commit()
             return True
 
-    def delete_all(self):
-        with Session(self.engine) as session:
+    async def delete_all(self):
+        async with async_session() as session:
             try:
-                session.query(self.model).delete()
-                session.commit()
+                # For simplicity in delete_all, we can use traditional query or execute delete
+                from sqlalchemy import delete
+                await session.execute(delete(self.model))
+                await session.commit()
                 return True
             except Exception as e:
-                session.rollback()
+                await session.rollback()
                 return False
 
-    def save(self, model: SQLModel):
-        with Session(self.engine) as session:
+    async def save(self, model: SQLModel):
+        async with async_session() as session:
             session.add(model)
-            session.commit()
-            session.refresh(model)
+            await session.commit()
+            await session.refresh(model)
             return model
 
 
 class UserManager(QueryManager):
-    def create(self, **kwargs):
+    async def create(self, **kwargs):
         kwargs["username"] = kwargs["email"]
-        return super().create(**kwargs)
+        return await super().create(**kwargs)
