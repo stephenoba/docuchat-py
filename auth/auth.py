@@ -6,7 +6,7 @@ from pwdlib import PasswordHash
 
 from config import get_settings
 from models import User, RefreshToken
-from auth.auth_errors import UserNotFoundError, InactiveUserError, InvalidPasswordError
+from auth.auth_errors import UserNotFoundError, UserAlreadyExistsError, InactiveUserError, InvalidPasswordError
 
 settings = get_settings()
 
@@ -20,6 +20,16 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 def get_user(username: str) -> User:
     return User.objects.get(username=username)
+
+def register_user(email: str, password: str, tier: str = "free", is_admin: bool = False) -> User:
+    # since the username field is populated with the user's email and the username feild is indexed, we can use the email to check for existing users and it will be faster than querying the email field
+    user = User.objects.get(username=email)
+    if user:
+        raise UserAlreadyExistsError()
+    # TODO: Create test for password strenght and conformity to standards
+    password_hash = create_password_hash(password)
+    user = User.objects.create(email=email, password_hash=password_hash, tier=tier)
+    return user
 
 def authenticate_user(username: str, password: str) -> bool:
     user = get_user(username)

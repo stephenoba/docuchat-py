@@ -7,6 +7,11 @@ class UserNotFoundError(AuthError):
         self.message = "User not found"
 
 
+class UserAlreadyExistsError(AuthError):
+    def __init__(self):
+        self.message = "User already exists"
+
+
 class InactiveUserError(AuthError):
     def __init__(self):
         self.message = "User is inactive"

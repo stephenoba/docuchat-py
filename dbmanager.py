@@ -33,6 +33,10 @@ class QueryManager(DBManager):
         with Session(self.engine) as session:
             return session.query(self.model).all()
 
+    def get(self, **kwargs):
+        with Session(self.engine) as session:
+            return session.query(self.model).filter_by(**kwargs).first()
+
     def get_by_id(self, id: int):
         with Session(self.engine) as session:
             return session.get(self.model, id)
@@ -80,7 +84,5 @@ class QueryManager(DBManager):
 
 class UserManager(QueryManager):
     def create(self, **kwargs):
-        from auth import create_password_hash
         kwargs["username"] = kwargs["email"]
-        kwargs["password_hash"] = create_password_hash(kwargs["password_hash"])
         return super().create(**kwargs)

@@ -1,32 +1,27 @@
 from models import User
+from auth.auth import register_user
 # since we are using alembic to manage migrations, ensure to migrate before running this script
 # alembic upgrade head
 
 if User.objects.delete_all():
     print("Deleted all users")
 
-    user1 = User.objects.create(
-        username="admin",
+    user1 = register_user(
         email="admin@example.com",
-        password_hash="admin",
+        password="admin",
         tier="admin",
-        tokens_used=0,
     )
 
-    user2 = User.objects.create(
-        username="user1",
+    user2 = register_user(
         email="user1@example.com",
-        password_hash="user1",
+        password="user1",
         tier="free",
-        tokens_used=0,
     )
 
-    user3 = User.objects.create(
-        username="user2",
+    user3 = register_user(
         email="user2@example.com",
-        password_hash="user2",
+        password="user2",
         tier="free",
-        tokens_used=0,
     )
 
 else:
