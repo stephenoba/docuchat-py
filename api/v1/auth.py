@@ -3,8 +3,11 @@ from fastapi_events.dispatcher import dispatch
 
 from auth import register_user, authenticate_user, refresh_access_token, logout_user
 from auth.auth_errors import (
-    UserAlreadyExistsError, UserNotFoundError, InvalidPasswordError, 
-    InactiveUserError, InvalidTokenError
+    UserAlreadyExistsError,
+    UserNotFoundError,
+    InvalidPasswordError,
+    InactiveUserError,
+    InvalidTokenError,
 )
 from schemas import SuccessResponse
 from schemas.auth import UserRegisterRequest, UserResponse, TokenResponse
@@ -12,13 +15,16 @@ from config import AUTH_EVENTS
 
 auth_router = APIRouter()
 
-@auth_router.post("/register", response_model=SuccessResponse[UserResponse], status_code=status.HTTP_201_CREATED)
+
+@auth_router.post(
+    "/register",
+    response_model=SuccessResponse[UserResponse],
+    status_code=status.HTTP_201_CREATED,
+)
 async def register(user_data: UserRegisterRequest):
     try:
         user = await register_user(
-            email=user_data.email,
-            password=user_data.password,
-            tier=user_data.tier
+            email=user_data.email, password=user_data.password, tier=user_data.tier
         )
         dispatch(AUTH_EVENTS.USER_REGISTERED, payload=user)
         return SuccessResponse[UserResponse](
@@ -27,9 +33,9 @@ async def register(user_data: UserRegisterRequest):
         )
     except UserAlreadyExistsError:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User already exists"
+            status_code=status.HTTP_409_CONFLICT, detail="User already exists"
         )
+
 
 @auth_router.post("/token", response_model=SuccessResponse[TokenResponse])
 async def token(email: str, password: str):
@@ -41,18 +47,16 @@ async def token(email: str, password: str):
         )
     except UserNotFoundError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
     except InvalidPasswordError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password"
+            detail="Invalid username or password",
         )
     except InactiveUserError:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User is inactive"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User is inactive"
         )
 
 
@@ -65,10 +69,8 @@ async def refresh(token: str):
             message="Token refreshed successfully",
         )
     except InvalidTokenError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+
 
 @auth_router.post("/logout", response_model=SuccessResponse)
 async def logout(token: str):
@@ -78,7 +80,4 @@ async def logout(token: str):
             message="User logged out successfully",
         )
     except InvalidTokenError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))

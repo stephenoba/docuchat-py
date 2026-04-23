@@ -25,13 +25,15 @@ async def handle_user_registered(event: Event):
                     action="signUp",
                     tokens=0,
                     cost_usd=0.0,
-                    log_metadata=json.dumps({
-                        "email": user.email,
-                        "tier": user.tier,
-                        "signUpAt": datetime.now(timezone.utc).isoformat(),
-                    })
+                    log_metadata=json.dumps(
+                        {
+                            "email": user.email,
+                            "tier": user.tier,
+                            "signUpAt": datetime.now(timezone.utc).isoformat(),
+                        }
+                    ),
                 )
-                
+
                 # Create a welcome conversation
                 await Conversation.objects.create(
                     session=session,

@@ -1,6 +1,6 @@
 class AuthError(Exception):
     message: str
-    
+
 
 class UserNotFoundError(AuthError):
     def __init__(self):
@@ -20,6 +20,7 @@ class InactiveUserError(AuthError):
 class InvalidPasswordError(AuthError):
     def __init__(self, message: str = "Invalid password"):
         self.message = message
+
 
 class InvalidTokenError(AuthError):
     def __init__(self, message: str = "Invalid token"):

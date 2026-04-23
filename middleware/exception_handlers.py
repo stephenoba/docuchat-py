@@ -24,10 +24,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     details = []
     for error in exc.errors():
         field = ".".join(str(loc) for loc in error["loc"] if loc != "body")
-        details.append(ErrorDetail(
-            field=field or "unknown",
-            message=error["msg"],
-        ))
+        details.append(
+            ErrorDetail(
+                field=field or "unknown",
+                message=error["msg"],
+            )
+        )
 
     return JSONResponse(
         status_code=422,

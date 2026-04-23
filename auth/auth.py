@@ -11,7 +11,13 @@ from fastapi.security import OAuth2PasswordBearer
 from config import get_settings
 from models import User, RefreshToken
 from schemas.auth import TokenResponse
-from auth.auth_errors import UserNotFoundError, UserAlreadyExistsError, InactiveUserError, InvalidPasswordError, InvalidTokenError
+from auth.auth_errors import (
+    UserNotFoundError,
+    UserAlreadyExistsError,
+    InactiveUserError,
+    InvalidPasswordError,
+    InvalidTokenError,
+)
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -19,26 +25,35 @@ logger = logging.getLogger(__name__)
 oauth2_password_bearer = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 password_hash = PasswordHash.recommended()
 
+
 def create_password_hash(password: str) -> str:
     return password_hash.hash(password)
 
+
 def verify_password(password: str, hashed_password: str) -> bool:
     return password_hash.verify(password, hashed_password)
+
 
 async def get_user(**kwargs) -> User:
     # QueryManager.get can use any field to query the database. So this function can also accept the user_id or email strings.
     print(kwargs)
     return await User.objects.get(**kwargs)
 
-async def register_user(email: str, password: str, tier: str = "free", is_admin: bool = False) -> User:
+
+async def register_user(
+    email: str, password: str, tier: str = "free", is_admin: bool = False
+) -> User:
     # since the username field is populated with the user's email and the username feild is indexed, we can use the email to check for existing users and it will be faster than querying the email field
     user = await User.objects.get(username=email)
     if user:
         raise UserAlreadyExistsError()
     # TODO: Create test for password strenght and conformity to standards
     password_hash = create_password_hash(password)
-    user = await User.objects.create(email=email, password_hash=password_hash, tier=tier)
+    user = await User.objects.create(
+        email=email, password_hash=password_hash, tier=tier
+    )
     return user
+
 
 async def authenticate_user(username: str, password: str) -> bool:
     user = await get_user(username=username)
@@ -50,6 +65,7 @@ async def authenticate_user(username: str, password: str) -> bool:
         raise InvalidPasswordError()
     return await create_tokens(user)
 
+
 async def logout_user(token: str) -> bool:
     refresh_token = await RefreshToken.objects.get(token=token)
     if not refresh_token:
@@ -58,30 +74,37 @@ async def logout_user(token: str) -> bool:
         raise InvalidTokenError("Refresh token is revoked")
     if refresh_token.is_used:
         raise InvalidTokenError("Refresh token is used")
-    if refresh_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+    if refresh_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(
+        timezone.utc
+    ):
         raise InvalidTokenError("Refresh token is expired")
     refresh_token.is_revoked = True
     await RefreshToken.objects.save(refresh_token)
     return True
 
+
 def create_access_token(user: User) -> str:
     payload = {
         "sub": str(user.id),
         "tier": user.tier,
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-        "type": "access"
+        "exp": datetime.now(timezone.utc)
+        + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+        "type": "access",
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
+
 async def create_refresh_token(user: User) -> str:
-    expired_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expired_at = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
     payload = {
         "sub": str(user.id),
         "tier": user.tier,
         "exp": expired_at,
         "iat": datetime.now(timezone.utc),
         "jti": str(uuid.uuid4()),
-        "type": "refresh"
+        "type": "refresh",
     }
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     await RefreshToken.objects.create(
@@ -91,6 +114,7 @@ async def create_refresh_token(user: User) -> str:
     )
     return token
 
+
 async def create_tokens(user: User) -> TokenResponse:
     return TokenResponse(
         access_token=create_access_token(user),
@@ -98,9 +122,12 @@ async def create_tokens(user: User) -> TokenResponse:
         token_type="Bearer",
     )
 
+
 def verify_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         if payload["type"] != "access":
             raise InvalidTokenError("Invalid token type")
         return payload
@@ -109,9 +136,12 @@ def verify_access_token(token: str) -> dict:
     except jwt.InvalidTokenError:
         raise InvalidTokenError("Invalid token")
 
+
 def verify_refresh_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, settings.REFRESH_SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.REFRESH_SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         if payload["type"] != "refresh":
             raise ValueError("Invalid token type")
         return payload
@@ -120,6 +150,7 @@ def verify_refresh_token(token: str) -> dict:
     except jwt.InvalidTokenError:
         raise ValueError("Invalid token")
 
+
 async def refresh_access_token(refresh_token_str: str) -> TokenResponse:
     try:
         refresh_token = await RefreshToken.objects.get(token=refresh_token_str)
@@ -127,7 +158,9 @@ async def refresh_access_token(refresh_token_str: str) -> TokenResponse:
             raise InvalidTokenError("Invalid refresh token")
         if refresh_token.is_revoked:
             raise InvalidTokenError("Refresh token is revoked")
-        if refresh_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        if refresh_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(
+            timezone.utc
+        ):
             raise InvalidTokenError("Refresh token is expired")
         if refresh_token.is_used:
             raise InvalidTokenError("Refresh token is used")
@@ -136,10 +169,11 @@ async def refresh_access_token(refresh_token_str: str) -> TokenResponse:
         user = await User.objects.get_by_id(refresh_token.user_id)
         if not user:
             raise InvalidTokenError("User not found")
-            
+
         return await create_tokens(user)
     except ValueError as e:
         raise ValueError(e)
+
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_password_bearer)]):
     credentials_exception = HTTPException(

@@ -5,18 +5,13 @@ Revises: e33751c309bc
 Create Date: 2026-04-16 16:16:39.356794
 
 """
+
 from typing import Sequence, Union
-
-from alembic import op
-import sqlalchemy as sa
-
-import sqlmodel
-
 
 
 # revision identifiers, used by Alembic.
-revision: str = '78d866c7aaa8'
-down_revision: Union[str, Sequence[str], None] = 'e33751c309bc'
+revision: str = "78d866c7aaa8"
+down_revision: Union[str, Sequence[str], None] = "e33751c309bc"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

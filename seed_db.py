@@ -5,6 +5,7 @@ from auth.auth import register_user
 # since we are using alembic to manage migrations, ensure to migrate before running this script
 # alembic upgrade head
 
+
 async def seed():
     if await User.objects.delete_all():
         print("Deleted all users")
@@ -29,6 +30,7 @@ async def seed():
         print("DB Seeded successfully")
     else:
         print("Failed to delete all users")
+
 
 if __name__ == "__main__":
     asyncio.run(seed())

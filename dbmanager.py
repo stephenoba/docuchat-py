@@ -62,7 +62,9 @@ class QueryManager(DBManager):
             result = await s.execute(statement)
             return result.scalars().first()
 
-    async def get_by_id(self, id: bytes | str | uuid.UUID, session: AsyncSession = None):
+    async def get_by_id(
+        self, id: bytes | str | uuid.UUID, session: AsyncSession = None
+    ):
         async with self._session(session) as s:
             return await s.get(self.model, id)
 
@@ -98,6 +100,7 @@ class QueryManager(DBManager):
         async with self._session(session) as s:
             try:
                 from sqlalchemy import delete
+
                 await s.execute(delete(self.model))
                 if not session:
                     await s.commit()

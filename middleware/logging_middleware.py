@@ -13,10 +13,10 @@ logger = logging.getLogger("api_logger")
 logger.setLevel(logging.INFO)
 
 # Formatter for file (includes timestamp)
-file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
 # Formatter for console (cleaner)
-console_formatter = logging.Formatter('%(message)s')
+console_formatter = logging.Formatter("%(message)s")
 
 # Clear existing handlers to prevent duplicates during reload
 if logger.handlers:
@@ -32,12 +32,13 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(console_formatter)
 logger.addHandler(stream_handler)
 
+
 async def logging_middleware(request: Request, call_next):
     """
     Middleware to log every API request with timing and client metadata.
     """
     start_time = time.time()
-    
+
     # Process the request
     try:
         response = await call_next(request)
@@ -46,7 +47,7 @@ async def logging_middleware(request: Request, call_next):
         duration = (time.time() - start_time) * 1000
         client_ip = request.client.host if request.client else "Unknown"
         user_agent = request.headers.get("user-agent", "Unknown")
-        
+
         logger.error(
             f"[HTTP] {request.method} {request.url.path} | "
             f"FAILURE (Exception) | "
@@ -55,19 +56,19 @@ async def logging_middleware(request: Request, call_next):
             f"UA: {user_agent} | Error: {str(e)}"
         )
         raise e
-        
+
     duration = (time.time() - start_time) * 1000
-    
+
     # Extract metadata
     status_code = response.status_code
     method = request.method
     path = request.url.path
     client_ip = request.client.host if request.client else "Unknown"
     user_agent = request.headers.get("user-agent", "Unknown")
-    
+
     # Success/Failure determined by status code
     result = "SUCCESS" if 200 <= status_code < 400 else "FAILURE"
-    
+
     log_message = (
         f"[HTTP] {method} {path} | "
         f"{result} ({status_code}) | "
@@ -75,10 +76,10 @@ async def logging_middleware(request: Request, call_next):
         f"IP: {client_ip} | "
         f"UA: {user_agent}"
     )
-    
+
     if result == "SUCCESS":
         logger.info(log_message)
     else:
         logger.error(log_message)
-        
+
     return response

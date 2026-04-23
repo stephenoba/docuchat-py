@@ -19,9 +19,10 @@ __all__ = [
     "AITrace",
 ]
 
+
 class User(SQLModel, table=True):
-    """User model
-    """
+    """User model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
@@ -44,7 +45,7 @@ class User(SQLModel, table=True):
     ai_traces: List["AITrace"] = Relationship(back_populates="user")
     roles: List["UserRole"] = Relationship(
         back_populates="user",
-        sa_relationship_kwargs={"foreign_keys": "UserRole.user_id"}
+        sa_relationship_kwargs={"foreign_keys": "UserRole.user_id"},
     )
     refresh_tokens: List["RefreshToken"] = Relationship(back_populates="user")
 
@@ -52,8 +53,8 @@ class User(SQLModel, table=True):
 
 
 class Role(SQLModel, table=True):
-    """Role model
-    """
+    """Role model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
@@ -72,8 +73,8 @@ class Role(SQLModel, table=True):
 
 
 class Permission(SQLModel, table=True):
-    """Permission model
-    """
+    """Permission model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
@@ -92,23 +93,29 @@ class Permission(SQLModel, table=True):
 
 
 class UserRole(SQLModel, table=True):
-    """UserRole model
-    """
+    """UserRole model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
         index=True,
         nullable=False,
     )
-    user_id: uuid.UUID = Field(index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE")
-    role_id: uuid.UUID = Field(index=True, foreign_key="role.id", nullable=False, ondelete="CASCADE")
-    assigned_by: uuid.UUID | None = Field(index=True, foreign_key="user.id", nullable=True, ondelete="SET NULL")
+    user_id: uuid.UUID = Field(
+        index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
+    role_id: uuid.UUID = Field(
+        index=True, foreign_key="role.id", nullable=False, ondelete="CASCADE"
+    )
+    assigned_by: uuid.UUID | None = Field(
+        index=True, foreign_key="user.id", nullable=True, ondelete="SET NULL"
+    )
     assigned_at: datetime = Field(default_factory=datetime.now)
     created_at: datetime = Field(default_factory=datetime.now)
 
     user: User = Relationship(
         back_populates="roles",
-        sa_relationship_kwargs={"foreign_keys": "UserRole.user_id"}
+        sa_relationship_kwargs={"foreign_keys": "UserRole.user_id"},
     )
     role: Role = Relationship(back_populates="users")
 
@@ -116,16 +123,20 @@ class UserRole(SQLModel, table=True):
 
 
 class RolePermission(SQLModel, table=True):
-    """RolePermission model
-    """
+    """RolePermission model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
         index=True,
         nullable=False,
     )
-    role_id: uuid.UUID = Field(index=True, foreign_key="role.id", nullable=False, ondelete="CASCADE")
-    permission_id: uuid.UUID = Field(index=True, foreign_key="permission.id", nullable=False, ondelete="CASCADE")
+    role_id: uuid.UUID = Field(
+        index=True, foreign_key="role.id", nullable=False, ondelete="CASCADE"
+    )
+    permission_id: uuid.UUID = Field(
+        index=True, foreign_key="permission.id", nullable=False, ondelete="CASCADE"
+    )
     created_at: datetime = Field(default_factory=datetime.now)
 
     role: Role = Relationship(back_populates="permissions")
@@ -135,15 +146,17 @@ class RolePermission(SQLModel, table=True):
 
 
 class Document(SQLModel, table=True):
-    """Document model
-    """
+    """Document model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
         index=True,
         nullable=False,
     )
-    user_id: uuid.UUID = Field(index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE")
+    user_id: uuid.UUID = Field(
+        index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
     title: str
     filename: str
     content: str
@@ -161,16 +174,19 @@ class Document(SQLModel, table=True):
 
     objects: ClassVar[QueryManager] = QueryManager()
 
+
 class Chunk(SQLModel, table=True):
-    """Chunk model
-    """
+    """Chunk model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
         index=True,
         nullable=False,
     )
-    document_id: uuid.UUID = Field(index=True, foreign_key="document.id", nullable=False, ondelete="CASCADE")
+    document_id: uuid.UUID = Field(
+        index=True, foreign_key="document.id", nullable=False, ondelete="CASCADE"
+    )
     index: int = Field(index=True)
     content: str
     token_count: int = Field(default=0)
@@ -180,17 +196,19 @@ class Chunk(SQLModel, table=True):
 
     objects: ClassVar[QueryManager] = QueryManager()
 
-    
+
 class Conversation(SQLModel, table=True):
-    """Conversation model
-    """
+    """Conversation model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
         index=True,
         nullable=False,
     )
-    user_id: uuid.UUID = Field(index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE")
+    user_id: uuid.UUID = Field(
+        index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
     title: str
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
@@ -202,16 +220,20 @@ class Conversation(SQLModel, table=True):
 
 
 class Message(SQLModel, table=True):
-    """Message model
-    """
+    """Message model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
         index=True,
         nullable=False,
     )
-    conversation_id: uuid.UUID = Field(index=True, foreign_key="conversation.id", nullable=False, ondelete="CASCADE")
-    document_id: uuid.UUID = Field(index=True, foreign_key="document.id", nullable=True, ondelete="SET NULL")
+    conversation_id: uuid.UUID = Field(
+        index=True, foreign_key="conversation.id", nullable=False, ondelete="CASCADE"
+    )
+    document_id: uuid.UUID = Field(
+        index=True, foreign_key="document.id", nullable=True, ondelete="SET NULL"
+    )
     role: str
     content: str
     sources: str | None = None
@@ -229,15 +251,17 @@ class Message(SQLModel, table=True):
 
 
 class UsageLog(SQLModel, table=True):
-    """UsageLog model
-    """
+    """UsageLog model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
         index=True,
         nullable=False,
     )
-    user_id: uuid.UUID = Field(index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE")
+    user_id: uuid.UUID = Field(
+        index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
     action: str
     tokens: int
     cost_usd: float
@@ -251,8 +275,8 @@ class UsageLog(SQLModel, table=True):
 
 
 class AITrace(SQLModel, table=True):
-    """AITrace model
-    """
+    """AITrace model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
@@ -260,7 +284,9 @@ class AITrace(SQLModel, table=True):
         nullable=False,
     )
     trace_id: str = Field(index=True, unique=True, nullable=False)
-    user_id: uuid.UUID = Field(index=True, foreign_key="user.id", nullable=True, ondelete="SET NULL")
+    user_id: uuid.UUID = Field(
+        index=True, foreign_key="user.id", nullable=True, ondelete="SET NULL"
+    )
     operation: str
     data: str = Field(nullable=False)
     created_at: datetime = Field(default_factory=datetime.now)
@@ -271,15 +297,17 @@ class AITrace(SQLModel, table=True):
 
 
 class RefreshToken(SQLModel, table=True):
-    """RefreshToken model
-    """
+    """RefreshToken model"""
+
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,
         primary_key=True,
         index=True,
         nullable=False,
     )
-    user_id: uuid.UUID = Field(index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE")
+    user_id: uuid.UUID = Field(
+        index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE"
+    )
     token: str = Field(index=True, unique=True, nullable=False)
     is_revoked: bool = Field(default=False)
     is_used: bool = Field(default=False)
