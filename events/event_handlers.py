@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 @local_handler.register(event_name=AUTH_EVENTS.USER_REGISTERED)
 async def handle_user_registered(event: Event):
     try:
-        user = event.payload
+        _, user = event
         async with async_session() as session:
             async with session.begin():
                 # Log the registration usage
@@ -40,3 +40,4 @@ async def handle_user_registered(event: Event):
                 )
     except Exception as e:
         logger.error(f"Failed to handle user registered event: {e}")
+        print(e)
