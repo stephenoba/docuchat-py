@@ -3,6 +3,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Project notes (local only)
+CHALLENGES.md
+
 # C extensions
 *.so
 
