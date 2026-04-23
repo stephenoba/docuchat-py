@@ -1,11 +1,19 @@
 import logging
-
+from enum import Enum
 from pathlib import Path
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
+
+class AUTH_EVENTS(Enum):
+    USER_REGISTERED = 'auth:user-registered'
+    USER_LOGGED_IN = 'auth:user-logged-in'
+    USER_LOGGED_OUT = 'auth:user-logged-out'
+    TOKEN_REFRESHED = 'auth:token-refreshed'
+    LOGIN_FAILED = 'auth:login-failed'
 
 # class RedisSettings(BaseModel):
 #     host: str = "localhost"

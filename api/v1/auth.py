@@ -1,9 +1,11 @@
 from fastapi import APIRouter, HTTPException, status
+from fastapi_events.dispatcher import dispatch
 
-from auth.auth import register_user
+from auth import register_user
 from auth.auth_errors import UserAlreadyExistsError
 from schemas import BaseResponse
 from schemas.auth import UserRegisterRequest, UserResponse
+from config import AUTH_EVENTS
 
 auth_router = APIRouter()
 
@@ -15,6 +17,7 @@ async def register(user_data: UserRegisterRequest):
             password=user_data.password,
             tier=user_data.tier
         )
+        dispatch(AUTH_EVENTS.USER_REGISTERED, payload=user)
         return BaseResponse[UserResponse](
             status="success",
             status_code=status.HTTP_201_CREATED,
