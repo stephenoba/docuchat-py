@@ -1,7 +1,4 @@
-from typing import Annotated
-
-from fastapi import FastAPI, Depends
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import FastAPI
 from fastapi_events.middleware import EventHandlerASGIMiddleware
 from fastapi_events.handlers.local import local_handler
 
@@ -12,16 +9,11 @@ import events  # noqa: F401
 
 settings = get_settings()
 
-oauth2_password_bearer = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
-
 app = FastAPI()
 
 app.add_middleware(EventHandlerASGIMiddleware, handlers=[local_handler])
 app.middleware("http")(logging_middleware)
 app.include_router(api_v1_router, prefix="/api/v1")
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_password_bearer)]):
-    return token
 
 @app.get("/health")
 async def health_check():
