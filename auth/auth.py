@@ -79,6 +79,8 @@ async def create_refresh_token(user: User) -> str:
         "sub": str(user.id),
         "tier": user.tier,
         "exp": expired_at,
+        "iat": datetime.now(timezone.utc),
+        "jti": str(uuid.uuid4()),
         "type": "refresh"
     }
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
