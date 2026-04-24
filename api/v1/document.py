@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select, and_
 
-from auth import get_current_user
+from auth import get_current_user, PermissionChecker
 from models import User, Document
 from schemas import SuccessResponse
 from schemas.document import DocumentCreate, DocumentUpdate, DocumentResponse
@@ -20,7 +20,8 @@ document_router = APIRouter()
     status_code=status.HTTP_201_CREATED,
 )
 async def create_document(
-    user: Annotated[User, Depends(get_current_user)], data: DocumentCreate
+    user: Annotated[User, Depends(PermissionChecker("documents:create"))],
+    data: DocumentCreate,
 ):
     document = await Document.objects.create(
         user_id=user.id,
@@ -37,7 +38,9 @@ async def create_document(
 
 @document_router.get("", response_model=SuccessResponse[List[DocumentResponse]])
 async def list_documents(
-    user: Annotated[User, Depends(get_current_user)], skip: int = 0, limit: int = 100
+    user: Annotated[User, Depends(PermissionChecker("documents:read"))],
+    skip: int = 0,
+    limit: int = 100,
 ):
     async with async_session() as session:
         statement = (
@@ -62,7 +65,8 @@ async def list_documents(
 
 @document_router.get("/{document_id}", response_model=SuccessResponse[DocumentResponse])
 async def get_document(
-    user: Annotated[User, Depends(get_current_user)], document_id: UUID
+    user: Annotated[User, Depends(PermissionChecker("documents:read"))],
+    document_id: UUID,
 ):
     document = await Document.objects.get(
         id=document_id, user_id=user.id, deleted_at=None
@@ -82,7 +86,7 @@ async def get_document(
     "/{document_id}", response_model=SuccessResponse[DocumentResponse]
 )
 async def update_document(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(PermissionChecker("documents:update"))],
     document_id: UUID,
     data: DocumentUpdate,
 ):
@@ -109,7 +113,8 @@ async def update_document(
 
 @document_router.delete("/{document_id}", response_model=SuccessResponse)
 async def delete_document(
-    user: Annotated[User, Depends(get_current_user)], document_id: UUID
+    user: Annotated[User, Depends(PermissionChecker("documents:delete"))],
+    document_id: UUID,
 ):
     document = await Document.objects.get(
         id=document_id, user_id=user.id, deleted_at=None

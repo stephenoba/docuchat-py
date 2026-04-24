@@ -7,9 +7,11 @@ import jwt
 from pwdlib import PasswordHash
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlmodel import select
+from sqlalchemy.orm import selectinload
 
 from config import get_settings
-from models import User, RefreshToken, Role, UserRole
+from models import User, RefreshToken, Role, UserRole, RolePermission, Permission
 from schemas.auth import TokenResponse
 from dbmanager import async_session
 from auth.auth_errors import (
@@ -75,6 +77,10 @@ async def register_user(
             else:
                 # Assign default role if no roles specified
                 default_role = await Role.objects.get(session=session, is_default=True)
+                if not default_role:
+                    # Fallback to 'member' role
+                    default_role = await Role.objects.get(session=session, name="member")
+                
                 if default_role:
                     roles_to_assign.append(default_role)
             
@@ -84,7 +90,8 @@ async def register_user(
                     session=session,
                     user_id=user.id,
                     role_id=role.id,
-                    assigned_by=assigned_by
+                    assigned_by=assigned_by,
+                    is_default=role.is_default
                 )
     
     return user
@@ -229,7 +236,32 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_password_bearer)
     except (ValueError, AttributeError):
         raise credentials_exception
 
-    user = await get_user(id=user_uuid)
+    async with async_session() as session:
+        statement = (
+            select(User)
+            .where(User.id == user_uuid)
+            .options(
+                selectinload(User.roles)
+                .selectinload(UserRole.role)
+                .selectinload(Role.permissions)
+                .selectinload(RolePermission.permission)
+            )
+        )
+        result = await session.execute(statement)
+        user = result.scalars().first()
     if user is None:
         raise credentials_exception
     return user
+
+
+class PermissionChecker:
+    def __init__(self, required_permission: str):
+        self.required_permission = required_permission
+
+    async def __call__(self, user: Annotated[User, Depends(get_current_user)]):
+        if self.required_permission not in user.permissions:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing required permission: {self.required_permission}",
+            )
+        return user

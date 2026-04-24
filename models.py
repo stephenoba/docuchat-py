@@ -49,6 +49,26 @@ class User(SQLModel, table=True):
     )
     refresh_tokens: List["RefreshToken"] = Relationship(back_populates="user")
 
+    @property
+    def role_names(self) -> List[str]:
+        try:
+            return [ur.role.name for ur in self.roles if ur.role]
+        except Exception:
+            return []
+
+    @property
+    def permissions(self) -> set[str]:
+        perms = set()
+        try:
+            for user_role in self.roles:
+                if user_role.role:
+                    for role_perm in user_role.role.permissions:
+                        if role_perm.permission:
+                            perms.add(role_perm.permission.name)
+        except Exception:
+            pass
+        return perms
+
     objects: ClassVar[UserManager] = UserManager()
 
 
@@ -110,6 +130,7 @@ class UserRole(SQLModel, table=True):
     assigned_by: uuid.UUID | None = Field(
         index=True, foreign_key="user.id", nullable=True, ondelete="SET NULL"
     )
+    is_default: bool = Field(default=False)
     assigned_at: datetime = Field(default_factory=datetime.now)
     created_at: datetime = Field(default_factory=datetime.now)
 

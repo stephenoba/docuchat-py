@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
 
-from auth import get_current_user
+from auth import get_current_user, PermissionChecker
 from models import User, Conversation
 from schemas import SuccessResponse
 from schemas.conversation import (
@@ -24,7 +24,8 @@ conversation_router = APIRouter()
     status_code=status.HTTP_201_CREATED,
 )
 async def create_conversation(
-    user: Annotated[User, Depends(get_current_user)], data: ConversationCreate
+    user: Annotated[User, Depends(PermissionChecker("conversations:create"))],
+    data: ConversationCreate,
 ):
     conversation = await Conversation.objects.create(user_id=user.id, title=data.title)
     return SuccessResponse[ConversationResponse](
@@ -35,7 +36,9 @@ async def create_conversation(
 
 @conversation_router.get("", response_model=SuccessResponse[List[ConversationResponse]])
 async def list_conversations(
-    user: Annotated[User, Depends(get_current_user)], skip: int = 0, limit: int = 100
+    user: Annotated[User, Depends(PermissionChecker("conversations:read"))],
+    skip: int = 0,
+    limit: int = 100,
 ):
     async with async_session() as session:
         statement = (
@@ -57,7 +60,8 @@ async def list_conversations(
     "/{conversation_id}", response_model=SuccessResponse[ConversationResponse]
 )
 async def get_conversation(
-    user: Annotated[User, Depends(get_current_user)], conversation_id: UUID
+    user: Annotated[User, Depends(PermissionChecker("conversations:read"))],
+    conversation_id: UUID,
 ):
     conversation = await Conversation.objects.get(id=conversation_id, user_id=user.id)
     if not conversation:
@@ -75,7 +79,7 @@ async def get_conversation(
     "/{conversation_id}", response_model=SuccessResponse[ConversationResponse]
 )
 async def update_conversation(
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(PermissionChecker("conversations:read"))],
     conversation_id: UUID,
     data: ConversationUpdate,
 ):
@@ -100,7 +104,8 @@ async def update_conversation(
 
 @conversation_router.delete("/{conversation_id}", response_model=SuccessResponse)
 async def delete_conversation(
-    user: Annotated[User, Depends(get_current_user)], conversation_id: UUID
+    user: Annotated[User, Depends(PermissionChecker("conversations:read"))],
+    conversation_id: UUID,
 ):
     conversation = await Conversation.objects.get(id=conversation_id, user_id=user.id)
     if not conversation:

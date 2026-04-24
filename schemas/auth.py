@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
@@ -16,6 +16,7 @@ class UserResponse(BaseModel):
     email: str
     tier: str
     is_active: bool
+    roles: list[str] = Field(default=[], validation_alias="role_names")
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
