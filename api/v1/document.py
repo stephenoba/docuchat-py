@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select, and_
 
-from auth import get_current_user, PermissionChecker
+from auth import PermissionChecker
 from models import User, Document
 from schemas import SuccessResponse
 from schemas.document import DocumentCreate, DocumentUpdate, DocumentResponse

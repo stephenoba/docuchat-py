@@ -11,7 +11,7 @@ from sqlmodel import select
 from sqlalchemy.orm import selectinload
 
 from config import get_settings
-from models import User, RefreshToken, Role, UserRole, RolePermission, Permission
+from models import User, RefreshToken, Role, UserRole, RolePermission
 from schemas.auth import TokenResponse
 from dbmanager import async_session
 from auth.auth_errors import (
