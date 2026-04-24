@@ -5,7 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from decouple import config as _config
+from config import get_settings
 from sqlmodel import SQLModel
 
 from models import *  # noqa: F403
@@ -19,8 +19,8 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-DATABASE_URL = _config("DATABASE_URL", default="sqlite:///../test.db", cast=str)
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+settings = get_settings()
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # add your model's MetaData object here
 # for 'autogenerate' support

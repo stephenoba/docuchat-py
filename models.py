@@ -167,6 +167,7 @@ class Document(SQLModel, table=True):
     error: str | None = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
+    deleted_at: datetime | None = Field(default=None)
 
     user: User = Relationship(back_populates="documents")
     chunks: List["Chunk"] = Relationship(back_populates="document")
