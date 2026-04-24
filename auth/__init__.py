@@ -9,6 +9,7 @@ from .auth import (
     refresh_access_token,
     get_current_user,
     logout_user,
+    PermissionChecker,
 )
 from .auth_errors import (
     UserNotFoundError,
@@ -29,6 +30,7 @@ __all__ = [
     "refresh_access_token",
     "get_current_user",
     "logout_user",
+    "PermissionChecker",
     # Errors
     "UserNotFoundError",
     "InactiveUserError",

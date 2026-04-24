@@ -17,6 +17,11 @@ class AUTH_EVENTS(Enum):
     LOGIN_FAILED = "auth:login-failed"
 
 
+class ADMIN_EVENTS(Enum):
+    ROLE_ASSIGNED = "admin:role-assigned"
+    ROLE_REVOKED = "admin:role-revoked"
+
+
 # class RedisSettings(BaseModel):
 #     host: str = "localhost"
 #     port: int = 6379

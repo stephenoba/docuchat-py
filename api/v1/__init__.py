@@ -4,7 +4,7 @@ from api.v1.auth import auth_router
 from api.v1.user import user_router
 from api.v1.document import document_router
 from api.v1.conversation import conversation_router
-
+from api.v1.admin import admin_router
 
 api_v1_router = APIRouter()
 
@@ -14,3 +14,4 @@ api_v1_router.include_router(document_router, prefix="/document", tags=["documen
 api_v1_router.include_router(
     conversation_router, prefix="/conversation", tags=["conversation"]
 )
+api_v1_router.include_router(admin_router, prefix="/admin", tags=["admin"])
