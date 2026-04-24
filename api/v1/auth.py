@@ -24,7 +24,10 @@ auth_router = APIRouter()
 async def register(user_data: UserRegisterRequest):
     try:
         user = await register_user(
-            email=user_data.email, password=user_data.password, tier=user_data.tier
+            email=user_data.email,
+            password=user_data.password,
+            tier=user_data.tier,
+            roles=user_data.roles,
         )
         dispatch(AUTH_EVENTS.USER_REGISTERED, payload=user)
         return SuccessResponse[UserResponse](

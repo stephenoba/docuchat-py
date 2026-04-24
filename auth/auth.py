@@ -42,7 +42,11 @@ async def get_user(**kwargs) -> User:
 
 
 async def register_user(
-    email: str, password: str, tier: str = "free", roles: list[str] | None = None
+    email: str, 
+    password: str, 
+    tier: str = "free", 
+    roles: list[str] | None = None,
+    assigned_by: uuid.UUID | None = None
 ) -> User:
     # since the username field is populated with the user's email and the username feild is indexed, we can use the email to check for existing users and it will be faster than querying the email field
     user = await User.objects.get(username=email)
@@ -79,7 +83,8 @@ async def register_user(
                 await UserRole.objects.create(
                     session=session,
                     user_id=user.id,
-                    role_id=role.id
+                    role_id=role.id,
+                    assigned_by=assigned_by
                 )
     
     return user
