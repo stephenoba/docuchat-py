@@ -4,11 +4,11 @@ import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_events.dispatcher import dispatch
-from sqlmodel import select, func, and_
+from sqlmodel import select, func
 from sqlalchemy.orm import selectinload
 
-from auth import get_current_user, PermissionChecker
-from models import User, Role, UserRole, RolePermission, Permission, UsageLog
+from auth import PermissionChecker
+from models import User, Role, UserRole, RolePermission, UsageLog
 from schemas import SuccessResponse
 from schemas.admin import RoleResponse, RoleAssignmentRequest
 from dbmanager import async_session
@@ -93,7 +93,7 @@ async def assign_role(
             return SuccessResponse(message=f"Role '{data.role_name}' already assigned to user")
         
         # Assign role
-        user_role = await UserRole.objects.create(
+        await UserRole.objects.create(
             session=session,
             user_id=user_id,
             role_id=role.id,
