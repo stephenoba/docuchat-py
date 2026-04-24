@@ -40,7 +40,7 @@ async def list_documents(
         statement = select(Document).where(
             and_(
                 Document.user_id == user.id,
-                Document.deleted_at == None
+                Document.deleted_at == None # noqa: E711
             )
         ).offset(skip).limit(limit)
         results = await session.execute(statement)
