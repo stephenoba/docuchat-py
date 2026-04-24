@@ -8,6 +8,7 @@ class UserRegisterRequest(BaseModel):
     email: str
     password: str
     tier: Optional[str] = "free"
+    roles: Optional[list[str]] = None
 
 
 class UserResponse(BaseModel):

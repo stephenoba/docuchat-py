@@ -9,8 +9,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from config import get_settings
-from models import User, RefreshToken
+from models import User, RefreshToken, Role, UserRole
 from schemas.auth import TokenResponse
+from dbmanager import async_session
 from auth.auth_errors import (
     UserNotFoundError,
     UserAlreadyExistsError,
@@ -41,17 +42,46 @@ async def get_user(**kwargs) -> User:
 
 
 async def register_user(
-    email: str, password: str, tier: str = "free", is_admin: bool = False
+    email: str, password: str, tier: str = "free", roles: list[str] | None = None
 ) -> User:
     # since the username field is populated with the user's email and the username feild is indexed, we can use the email to check for existing users and it will be faster than querying the email field
     user = await User.objects.get(username=email)
     if user:
         raise UserAlreadyExistsError()
     # TODO: Create test for password strenght and conformity to standards
-    password_hash = create_password_hash(password)
-    user = await User.objects.create(
-        email=email, password_hash=password_hash, tier=tier
-    )
+    password_hash_str = create_password_hash(password)
+    
+    async with async_session() as session:
+        async with session.begin():
+            # Create the user
+            user = await User.objects.create(
+                session=session,
+                email=email, 
+                password_hash=password_hash_str, 
+                tier=tier
+            )
+            
+            # Determine roles to assign
+            roles_to_assign = []
+            if roles:
+                for role_name in roles:
+                    role = await Role.objects.get(session=session, name=role_name)
+                    if role:
+                        roles_to_assign.append(role)
+            else:
+                # Assign default role if no roles specified
+                default_role = await Role.objects.get(session=session, is_default=True)
+                if default_role:
+                    roles_to_assign.append(default_role)
+            
+            # Assign roles
+            for role in roles_to_assign:
+                await UserRole.objects.create(
+                    session=session,
+                    user_id=user.id,
+                    role_id=role.id
+                )
+    
     return user
 
 
