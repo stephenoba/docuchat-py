@@ -11,4 +11,6 @@ api_v1_router = APIRouter()
 api_v1_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_v1_router.include_router(user_router, prefix="/user", tags=["user"])
 api_v1_router.include_router(document_router, prefix="/document", tags=["document"])
-api_v1_router.include_router(conversation_router, prefix="/conversation", tags=["conversation"])
+api_v1_router.include_router(
+    conversation_router, prefix="/conversation", tags=["conversation"]
+)
