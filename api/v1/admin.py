@@ -16,18 +16,6 @@ from config import ADMIN_EVENTS
 
 admin_router = APIRouter()
 
-async def log_admin_action(user_id: uuid.UUID, action: str, metadata: dict):
-    async with async_session() as session:
-        usage_log = UsageLog(
-            user_id=user_id,
-            action=action,
-            tokens=0,
-            cost_usd=0.0,
-            log_metadata=json.dumps(metadata)
-        )
-        session.add(usage_log)
-        await session.commit()
-
 @admin_router.get("/roles", response_model=SuccessResponse[List[RoleResponse]])
 async def list_roles(
     admin: Annotated[User, Depends(PermissionChecker("roles:manage"))]
@@ -62,9 +50,6 @@ async def list_roles(
                 user_count=user_count
             ))
             
-    # Log action
-    await log_admin_action(admin.id, "list_roles", {})
-    
     return SuccessResponse[List[RoleResponse]](
         data=response_data,
         message="Roles retrieved successfully"
@@ -105,7 +90,6 @@ async def assign_role(
         
     # Log and dispatch
     metadata = {"target_user_id": str(user_id), "role_name": data.role_name}
-    await log_admin_action(admin.id, "assign_role", metadata)
     dispatch(ADMIN_EVENTS.ROLE_ASSIGNED, payload={"admin_id": admin.id, **metadata})
     
     return SuccessResponse(message=f"Role '{data.role_name}' assigned to user successfully")
@@ -133,7 +117,6 @@ async def revoke_role(
         
     # Log and dispatch
     metadata = {"target_user_id": str(user_id), "role_name": role_name}
-    await log_admin_action(admin.id, "revoke_role", metadata)
     dispatch(ADMIN_EVENTS.ROLE_REVOKED, payload={"admin_id": admin.id, **metadata})
     
     return SuccessResponse(message=f"Role '{role_name}' revoked from user successfully")

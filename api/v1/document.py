@@ -3,6 +3,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi_events.dispatcher import dispatch
 from sqlmodel import select, and_
 
 from auth import PermissionChecker
@@ -10,6 +11,7 @@ from models import User, Document
 from schemas import SuccessResponse
 from schemas.document import DocumentCreate, DocumentUpdate, DocumentResponse
 from dbmanager import async_session
+from config import DOCUMENT_EVENTS
 
 document_router = APIRouter()
 
@@ -28,8 +30,36 @@ async def create_document(
         title=data.title,
         content=data.content,
         filename=data.filename or data.title,
-        status="completed",  # Assuming it's simple for now, usually would be 'pending' during processing
+        file_size_bytes=len(data.content.encode("utf-8")),
+        status="completed",
     )
+
+    # Log and Dispatch
+    metadata = {
+        "title": document.title,
+        "filename": document.filename,
+        "file_size": document.file_size_bytes,
+        "timestamp": datetime.now().isoformat(),
+    }
+    dispatch(DOCUMENT_EVENTS.CREATED, payload={"user_id": user.id, **metadata})
+
+    # Simulate processing (for now)
+    processing_start = datetime.now()
+    # Mocking chunking
+    num_chunks = max(1, len(data.content) // 500)
+    document.chunk_count = num_chunks
+    await Document.objects.save(document)
+    processing_end = datetime.now()
+    duration_ms = int((processing_end - processing_start).total_seconds() * 1000)
+
+    # Log and Dispatch Processed
+    processed_metadata = {
+        "document_id": str(document.id),
+        "chunk_count": num_chunks,
+        "duration_ms": duration_ms,
+    }
+    dispatch(DOCUMENT_EVENTS.PROCESSED, payload={"user_id": user.id, **processed_metadata})
+
     return SuccessResponse[DocumentResponse](
         data=DocumentResponse.model_validate(document),
         message="Document created successfully",
@@ -128,4 +158,49 @@ async def delete_document(
     document.deleted_at = datetime.now()
     await Document.objects.save(document)
 
+    # Log and Dispatch
+    metadata = {
+        "document_id": str(document_id),
+        "title": document.title,
+        "deleted_at": document.deleted_at.isoformat(),
+    }
+    dispatch(DOCUMENT_EVENTS.DELETED, payload={"user_id": user.id, **metadata})
+
     return SuccessResponse(message="Document deleted successfully")
+
+
+@document_router.post(
+    "/{document_id}/restore", response_model=SuccessResponse[DocumentResponse]
+)
+async def restore_document(
+    user: Annotated[User, Depends(PermissionChecker("documents:update"))],
+    document_id: UUID,
+):
+    # Find soft-deleted document or any document of the user
+    document = await Document.objects.get(id=document_id, user_id=user.id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    if document.deleted_at is None:
+        return SuccessResponse[DocumentResponse](
+            data=DocumentResponse.model_validate(document),
+            message="Document is already active",
+        )
+
+    document.deleted_at = None
+    await Document.objects.save(document)
+
+    # Log and Dispatch
+    metadata = {
+        "document_id": str(document_id),
+        "title": document.title,
+        "restored_at": datetime.now().isoformat(),
+    }
+    dispatch(DOCUMENT_EVENTS.RESTORED, payload={"user_id": user.id, **metadata})
+
+    return SuccessResponse[DocumentResponse](
+        data=DocumentResponse.model_validate(document),
+        message="Document restored successfully",
+    )

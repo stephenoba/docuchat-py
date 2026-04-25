@@ -22,6 +22,13 @@ class ADMIN_EVENTS(Enum):
     ROLE_REVOKED = "admin:role-revoked"
 
 
+class DOCUMENT_EVENTS(Enum):
+    CREATED = "doc:created"
+    PROCESSED = "doc:processed"
+    DELETED = "doc:deleted"
+    RESTORED = "doc:restored"
+
+
 # class RedisSettings(BaseModel):
 #     host: str = "localhost"
 #     port: int = 6379
