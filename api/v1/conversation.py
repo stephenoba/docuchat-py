@@ -3,7 +3,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import select
+from sqlmodel import select, func
 
 from auth import PermissionChecker
 from models import User, Conversation, Message
@@ -43,18 +43,27 @@ async def list_conversations(
     limit: int = 100,
 ):
     async with async_session() as session:
-        statement = (
-            select(Conversation)
-            .where(Conversation.user_id == user.id)
-            .offset(skip)
-            .limit(limit)
-        )
+        base_query = select(Conversation).where(Conversation.user_id == user.id)
+
+        # Count total
+        count_stmt = select(func.count()).select_from(base_query.subquery())
+        total_result = await session.execute(count_stmt)
+        total = total_result.scalar() or 0
+
+        statement = base_query.offset(skip).limit(limit)
         results = await session.execute(statement)
         conversations = results.scalars().all()
+
+    from schemas import PaginationMeta
 
     return SuccessResponse[List[ConversationResponse]](
         data=[ConversationResponse.model_validate(c) for c in conversations],
         message="Conversations retrieved successfully",
+        meta=PaginationMeta(
+            page=(skip // limit) + 1 if limit > 0 else 1,
+            limit=limit,
+            total=total,
+        ),
     )
 
 

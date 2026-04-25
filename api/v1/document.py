@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi_events.dispatcher import dispatch
-from sqlmodel import select, and_, or_, desc, asc
+from sqlmodel import select, and_, desc, asc, func
 
 from auth import PermissionChecker
 from models import User, Document
@@ -76,22 +76,27 @@ async def list_documents(
     limit: int = 100,
 ):
     async with async_session() as session:
-        statement = select(Document).where(
+        # Base filter and search logic
+        base_query = select(Document).where(
             and_(
                 Document.user_id == user.id,
                 Document.deleted_at == None,  # noqa: E711
             )
         )
 
-        # Filtering
         if status:
-            statement = statement.where(Document.status == status)
+            base_query = base_query.where(Document.status == status)
 
-        # Search
         if search:
-            statement = statement.where(Document.title.ilike(f"%{search}%"))
+            base_query = base_query.where(Document.title.ilike(f"%{search}%"))
+
+        # Count total
+        count_stmt = select(func.count()).select_from(base_query.subquery())
+        total_result = await session.execute(count_stmt)
+        total = total_result.scalar() or 0
 
         # Sorting
+        statement = base_query
         if sort:
             sort_fields = sort.split(",")
             for field in sort_fields:
@@ -111,9 +116,16 @@ async def list_documents(
         results = await session.execute(statement)
         documents = results.scalars().all()
 
+    from schemas import PaginationMeta
+
     return SuccessResponse[List[DocumentResponse]](
         data=[DocumentResponse.model_validate(d) for d in documents],
         message="Documents retrieved successfully",
+        meta=PaginationMeta(
+            page=(skip // limit) + 1 if limit > 0 else 1,
+            limit=limit,
+            total=total,
+        ),
     )
 
 
@@ -180,6 +192,7 @@ async def delete_document(
 
     # Soft delete
     document.deleted_at = datetime.now()
+    document.deleted_by = user.id
     await Document.objects.save(document)
 
     # Log and Dispatch
@@ -187,6 +200,7 @@ async def delete_document(
         "document_id": str(document_id),
         "title": document.title,
         "deleted_at": document.deleted_at.isoformat(),
+        "deleted_by": str(user.id),
     }
     dispatch(DOCUMENT_EVENTS.DELETED, payload={"user_id": user.id, **metadata})
 
@@ -214,6 +228,7 @@ async def restore_document(
         )
 
     document.deleted_at = None
+    document.deleted_by = None
     await Document.objects.save(document)
 
     # Log and Dispatch

@@ -39,7 +39,10 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
-    documents: List["Document"] = Relationship(back_populates="user")
+    documents: List["Document"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"foreign_keys": "[Document.user_id]"},
+    )
     conversations: List["Conversation"] = Relationship(back_populates="user")
     usage_logs: List["UsageLog"] = Relationship(back_populates="user")
     ai_traces: List["AITrace"] = Relationship(back_populates="user")
@@ -189,8 +192,12 @@ class Document(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     deleted_at: datetime | None = Field(default=None)
+    deleted_by: uuid.UUID | None = Field(default=None, foreign_key="user.id")
 
-    user: User = Relationship(back_populates="documents")
+    user: User = Relationship(
+        back_populates="documents",
+        sa_relationship_kwargs={"foreign_keys": "[Document.user_id]"},
+    )
     chunks: List["Chunk"] = Relationship(back_populates="document")
     messages: List["Message"] = Relationship(back_populates="document")
 

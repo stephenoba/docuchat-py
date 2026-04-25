@@ -34,6 +34,8 @@ async def test_list_conversations_success(client: AsyncClient):
     body = response.json()
     assert body["success"] is True
     assert len(body["data"]) == 3  # 1 welcome + 2 created
+    assert body["meta"]["total"] == 3
+    assert body["meta"]["page"] == 1
 
 
 @pytest.mark.asyncio

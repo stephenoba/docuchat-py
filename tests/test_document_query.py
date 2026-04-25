@@ -25,9 +25,11 @@ async def test_list_documents_filtering_and_sorting(client: AsyncClient):
     # 1. Test search
     resp = await client.get("/api/v1/document?search=apple", headers=headers)
     assert resp.status_code == 200
-    data = resp.json()["data"]
+    body = resp.json()
+    data = body["data"]
     assert len(data) == 1
     assert data[0]["title"] == "Apple"
+    assert body["meta"]["total"] == 1
 
     # 2. Test sorting asc
     resp = await client.get("/api/v1/document?sort=title", headers=headers)

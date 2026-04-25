@@ -44,7 +44,10 @@ async def test_list_documents_success(client: AsyncClient):
     body = response.json()
     assert body["success"] is True
     assert len(body["data"]) == 2
-    assert body["data"][0]["title"] == "Doc 1"
+    # Default sort is -created_at, so Doc 2 should be first
+    assert body["data"][0]["title"] == "Doc 2"
+    assert body["meta"]["total"] == 2
+    assert body["meta"]["page"] == 1
 
 
 @pytest.mark.asyncio
