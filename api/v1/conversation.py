@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select, func
 
 from auth import PermissionChecker
-from models import User, Conversation, Message
+from models import User, Conversation, Message, Document
 from schemas import SuccessResponse
 from schemas.conversation import (
     ConversationCreate,
@@ -144,6 +144,15 @@ async def send_message(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
         )
+
+    if data.document_id:
+        document = await Document.objects.get(
+            id=data.document_id, user_id=user.id, deleted_at=None
+        )
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+            )
 
     message = await Message.objects.create(
         conversation_id=conversation_id,
