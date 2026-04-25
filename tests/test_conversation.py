@@ -88,3 +88,26 @@ async def test_delete_conversation_hard(client: AsyncClient):
 async def test_unauthorized_conversation_access(client: AsyncClient):
     response = await client.get("/api/v1/conversation")
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_send_message_success(client: AsyncClient):
+    headers = await get_auth_headers(client, email="send@example.com")
+    # First create a conversation
+    create_resp = await client.post(
+        "/api/v1/conversation", json={"title": "Chat"}, headers=headers
+    )
+    assert create_resp.status_code == 201
+    conv_id = create_resp.json()["data"]["id"]
+
+    # Send message to that conversation
+    msg_resp = await client.post(
+        f"/api/v1/conversation/{conv_id}/messages",
+        json={"content": "Hello world from test"},
+        headers=headers,
+    )
+    assert msg_resp.status_code == 201
+    body = msg_resp.json()
+    assert body["data"]["content"] == "Hello world from test"
+    assert body["data"]["role"] == "user"
+    assert body["data"]["conversation_id"] == conv_id

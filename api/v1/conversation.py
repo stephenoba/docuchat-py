@@ -6,12 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
 
 from auth import PermissionChecker
-from models import User, Conversation
+from models import User, Conversation, Message
 from schemas import SuccessResponse
 from schemas.conversation import (
     ConversationCreate,
     ConversationUpdate,
     ConversationResponse,
+    MessageCreate,
+    MessageResponse,
 )
 from dbmanager import async_session
 
@@ -116,3 +118,31 @@ async def delete_conversation(
     await Conversation.objects.delete(conversation)
 
     return SuccessResponse(message="Conversation deleted successfully")
+
+
+@conversation_router.post(
+    "/{conversation_id}/messages",
+    response_model=SuccessResponse[MessageResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def send_message(
+    user: Annotated[User, Depends(PermissionChecker("conversations:create"))],
+    conversation_id: UUID,
+    data: MessageCreate,
+):
+    conversation = await Conversation.objects.get(id=conversation_id, user_id=user.id)
+    if not conversation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
+        )
+
+    message = await Message.objects.create(
+        conversation_id=conversation_id,
+        role="user",
+        content=data.content,
+        document_id=data.document_id,
+    )
+    return SuccessResponse[MessageResponse](
+        data=MessageResponse.model_validate(message),
+        message="Message sent successfully",
+    )
