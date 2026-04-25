@@ -2,9 +2,9 @@ from typing import Annotated, List
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi_events.dispatcher import dispatch
-from sqlmodel import select, and_
+from sqlmodel import select, and_, or_, desc, asc
 
 from auth import PermissionChecker
 from models import User, Document
@@ -69,21 +69,45 @@ async def create_document(
 @document_router.get("", response_model=SuccessResponse[List[DocumentResponse]])
 async def list_documents(
     user: Annotated[User, Depends(PermissionChecker("documents:read"))],
+    status: str | None = Query(None, description="Filter by status"),
+    search: str | None = Query(None, description="Search by title"),
+    sort: str | None = Query("-created_at", description="Sort by fields (e.g. title,-created_at)"),
     skip: int = 0,
     limit: int = 100,
 ):
     async with async_session() as session:
-        statement = (
-            select(Document)
-            .where(
-                and_(
-                    Document.user_id == user.id,
-                    Document.deleted_at == None,  # noqa: E711
-                )
+        statement = select(Document).where(
+            and_(
+                Document.user_id == user.id,
+                Document.deleted_at == None,  # noqa: E711
             )
-            .offset(skip)
-            .limit(limit)
         )
+
+        # Filtering
+        if status:
+            statement = statement.where(Document.status == status)
+
+        # Search
+        if search:
+            statement = statement.where(Document.title.ilike(f"%{search}%"))
+
+        # Sorting
+        if sort:
+            sort_fields = sort.split(",")
+            for field in sort_fields:
+                field = field.strip()
+                if field.startswith("-"):
+                    column_name = field[1:]
+                    column = getattr(Document, column_name, None)
+                    if column:
+                        statement = statement.order_by(desc(column))
+                else:
+                    column_name = field
+                    column = getattr(Document, column_name, None)
+                    if column:
+                        statement = statement.order_by(asc(column))
+
+        statement = statement.offset(skip).limit(limit)
         results = await session.execute(statement)
         documents = results.scalars().all()
 
