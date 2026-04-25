@@ -1,6 +1,5 @@
 from typing import Annotated, List
 import uuid
-import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_events.dispatcher import dispatch
@@ -8,7 +7,7 @@ from sqlmodel import select, func
 from sqlalchemy.orm import selectinload
 
 from auth import PermissionChecker
-from models import User, Role, UserRole, RolePermission, UsageLog
+from models import User, Role, UserRole, RolePermission
 from schemas import SuccessResponse
 from schemas.admin import RoleResponse, RoleAssignmentRequest
 from dbmanager import async_session

@@ -1,6 +1,5 @@
 import pytest
 from httpx import AsyncClient
-import uuid
 
 async def get_auth_headers(client: AsyncClient, email: str = "doc_event@example.com"):
     payload = {"email": email, "password": "Password123!"}

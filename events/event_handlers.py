@@ -6,7 +6,7 @@ from fastapi_events.handlers.local import local_handler
 from fastapi_events.typing import Event
 
 from models import UsageLog, Conversation
-from config import AUTH_EVENTS, ADMIN_EVENTS, DOCUMENT_EVENTS
+from config import AUTH_EVENTS, ADMIN_EVENTS
 from dbmanager import async_session
 
 logger = logging.getLogger(__name__)
