@@ -2,14 +2,14 @@ from typing import Annotated, List
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form
 from fastapi_events.dispatcher import dispatch
 from sqlmodel import select, and_, desc, asc, func
 
 from auth import PermissionChecker
 from models import User, Document
 from schemas import SuccessResponse
-from schemas.document import DocumentCreate, DocumentUpdate, DocumentResponse
+from schemas.document import DocumentUpdate, DocumentResponse
 from dbmanager import async_session
 from queues.celery_task import process_document
 from config import DOCUMENT_EVENTS
@@ -24,14 +24,26 @@ document_router = APIRouter()
 )
 async def create_document(
     user: Annotated[User, Depends(PermissionChecker("documents:create"))],
-    data: DocumentCreate,
+    file: UploadFile = File(...),
+    title: str | None = Form(None),
 ):
+    # Read file content
+    content = await file.read()
+    try:
+        content_str = content.decode("utf-8")
+    except UnicodeDecodeError:
+        # Fallback or error if not text
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only plain text files are supported currently."
+        )
+
     document = await Document.objects.create(
         user_id=user.id,
-        title=data.title,
-        content=data.content,
-        filename=data.filename or data.title,
-        file_size_bytes=len(data.content.encode("utf-8")),
+        title=title or file.filename,
+        content=content_str,
+        filename=file.filename or title,
+        file_size_bytes=len(content),
     )
 
     # Log and Dispatch

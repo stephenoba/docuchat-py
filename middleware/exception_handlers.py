@@ -3,11 +3,14 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from schemas import ErrorResponse, ErrorBody, ErrorDetail
+from logger import error_logger
 
 
 async def http_exception_handler(request: Request, exc: HTTPException):
     detail = str(exc.detail)
     error_code = detail.upper().replace(" ", "_")
+    
+    error_logger.warning(f"[HTTP {exc.status_code}] {request.method} {request.url.path} - {detail}")
 
     return JSONResponse(
         status_code=exc.status_code,
@@ -31,6 +34,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             )
         )
 
+    error_logger.warning(f"[Validation Error] {request.method} {request.url.path} - {len(details)} fields failed")
+    
     return JSONResponse(
         status_code=422,
         content=ErrorResponse(
@@ -44,6 +49,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 async def generic_exception_handler(request: Request, exc: Exception):
+    error_logger.exception(f"[Unhandled Error] {request.method} {request.url.path} - {str(exc)}")
     return JSONResponse(
         status_code=500,
         content=ErrorResponse(

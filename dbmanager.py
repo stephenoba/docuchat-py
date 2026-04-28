@@ -4,6 +4,7 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 
 from sqlmodel import SQLModel, select
+from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -14,16 +15,21 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 # Ensure using aiosqlite for SQLite
 DATABASE_URL = settings.DATABASE_URL
+# DB URL for celery since celery doesn't work with async
+CELERY_DATABASE_URL = DATABASE_URL
+
 if DATABASE_URL.startswith("sqlite:///"):
     DATABASE_URL = DATABASE_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
 
-engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG)
-async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+sync_engine = create_engine(CELERY_DATABASE_URL, echo=settings.DEBUG)
+async_engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG)
+
+async_session = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
 
 class DBManager:
     def __init__(self):
-        self.engine = engine
+        self.engine = async_engine
 
     async def create_db_and_tables(self):
         async with self.engine.begin() as conn:

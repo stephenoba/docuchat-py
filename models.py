@@ -1,4 +1,5 @@
 import uuid
+from enum import Enum
 from datetime import datetime
 from typing import List, ClassVar
 from sqlmodel import Field, SQLModel, Relationship
@@ -17,7 +18,23 @@ __all__ = [
     "Message",
     "UsageLog",
     "AITrace",
+    "RefreshToken",
+
+    "DocumentStatus",
+    "TierOptions",
 ]
+
+class DocumentStatus(Enum):
+    PENDING: str = "pending"
+    PROCESSING: str = "processing"
+    READY: str = "ready"
+    FAILED: str = "failed"
+    SUCCESS: str = "success"
+
+
+class TierOptions(Enum):
+    FREE: str = "free"
+    PRO: str = "pro"
 
 
 class User(SQLModel, table=True):
@@ -32,7 +49,7 @@ class User(SQLModel, table=True):
     username: str = Field(index=True)
     email: str = Field(unique=True)
     password_hash: str
-    tier: str = Field(default="free")
+    tier: str = Field(default=TierOptions.FREE.value)
     tokens_used: int = Field(default=0)
     token_limit: int = Field(default=10000)
     is_active: bool = Field(default=True)
@@ -187,7 +204,7 @@ class Document(SQLModel, table=True):
     mime_type: str | None = None
     file_size_bytes: int | None = None
     chunk_count: int = Field(default=0)
-    status: str = Field(default="pending")
+    status: str = Field(default=DocumentStatus.PENDING.value)
     error: str | None = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)

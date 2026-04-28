@@ -1,36 +1,6 @@
 import time
-import logging
-from pathlib import Path
 from fastapi import Request
-
-# Configure logs directory
-LOG_DIR = Path("logs")
-LOG_DIR.mkdir(exist_ok=True)
-LOG_FILE = LOG_DIR / "api.log"
-
-# Configure logger for this module
-logger = logging.getLogger("api_logger")
-logger.setLevel(logging.INFO)
-
-# Formatter for file (includes timestamp)
-file_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-
-# Formatter for console (cleaner)
-console_formatter = logging.Formatter("%(message)s")
-
-# Clear existing handlers to prevent duplicates during reload
-if logger.handlers:
-    logger.handlers.clear()
-
-# Add File Handler
-file_handler = logging.FileHandler(LOG_FILE)
-file_handler.setFormatter(file_formatter)
-logger.addHandler(file_handler)
-
-# Add Stream Handler (Console)
-stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(console_formatter)
-logger.addHandler(stream_handler)
+from logger import api_logger as logger
 
 
 async def logging_middleware(request: Request, call_next):
