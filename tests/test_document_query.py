@@ -43,9 +43,9 @@ async def test_list_documents_filtering_and_sorting(client: AsyncClient):
     titles = [d["title"] for d in data]
     assert titles == ["Cherry", "Banana", "Apple"]
 
-    # 4. Filter by status (simulated as 'completed' in creation)
-    resp = await client.get("/api/v1/document?status=completed", headers=headers)
+    # 4. Filter by status (simulated as 'pending' in creation)
+    resp = await client.get("/api/v1/document?status=pending", headers=headers)
     assert len(resp.json()["data"]) == 3
     
-    resp = await client.get("/api/v1/document?status=pending", headers=headers)
+    resp = await client.get("/api/v1/document?status=ready", headers=headers)
     assert len(resp.json()["data"]) == 0

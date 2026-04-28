@@ -12,20 +12,20 @@ os.environ["DEBUG"] = "false"
 
 # We must import after environment configs are overridden
 from main import app  # noqa: E402
-from dbmanager import engine, SQLModel  # noqa: E402
+from dbmanager import async_engine, SQLModel  # noqa: E402
 from seed_db import seed_rbac  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
 async def setup_db():
-    async with engine.begin() as conn:
+    async with async_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.drop_all)
         await conn.run_sync(SQLModel.metadata.create_all)
     
     # Seed RBAC for tests
     await seed_rbac()
     yield
-    async with engine.begin() as conn:
+    async with async_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.drop_all)
 
 

@@ -21,11 +21,11 @@ async def test_create_document_success(client: AsyncClient):
         "filename": "test.txt",
     }
     response = await client.post("/api/v1/document", json=payload, headers=headers)
-    assert response.status_code == 201
+    assert response.status_code == 202
     body = response.json()
     assert body["success"] is True
     assert body["data"]["title"] == "Test Document"
-    assert body["data"]["status"] == "completed"
+    assert body["data"]["status"] == "pending"
 
 
 @pytest.mark.asyncio
