@@ -153,7 +153,8 @@ async def get_document_processing_status(
 
     task_id = document.task_id
     if task_id:
-        task = AsyncResult(task_id, app=process_document)
+        from queues.celery_task import app as celery_app
+        task = AsyncResult(task_id, app=celery_app)
         if task.state == "PENDING" and document.status != DocumentStatus.PENDING.value:
             document.status = DocumentStatus.PENDING.value
         elif task.state == "PROGRESS" and document.status != DocumentStatus.PROCESSING.value:

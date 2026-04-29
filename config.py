@@ -43,6 +43,16 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 Day
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 7 Days
 
+    # Celery Settings
+    CELERY_BROKER_URL: str | None = None
+    CELERY_RESULT_BACKEND: str | None = None
+
+    # Document Processing Settings
+    DOC_PROCESSING_CHUNK_SIZE: int = 500
+    DOC_PROCESSING_CHUNK_OVERLAP: int = 100
+    DOC_PROCESSING_MAX_RETRIES: int = 3
+    DOC_PROCESSING_RETRY_BACKOFF: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:

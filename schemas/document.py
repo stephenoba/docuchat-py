@@ -15,6 +15,7 @@ class DocumentUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
 
+
 class DocumentStatusUpdate(BaseModel):
     status: str
     task_id: Optional[str] = None

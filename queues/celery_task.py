@@ -17,8 +17,8 @@ settings = get_settings()
 
 app = Celery(
     "docuchat-py",
-    broker=settings.REDIS_URL,
-    backend=settings.REDIS_URL,
+    broker=settings.CELERY_BROKER_URL or settings.REDIS_URL,
+    backend=settings.CELERY_RESULT_BACKEND or settings.REDIS_URL,
 )
 
 
@@ -27,10 +27,10 @@ app = Celery(
     bind=True,
     autoretry_for=(ValueError, Exception),
     retry_kwargs={
-        "max_retries": 3,
+        "max_retries": settings.DOC_PROCESSING_MAX_RETRIES,
         "countdown": 1,
     },
-    retry_backoff=True,
+    retry_backoff=settings.DOC_PROCESSING_RETRY_BACKOFF,
     retry_backoff_max=60,
     retry_jitter=True,
 )
@@ -56,7 +56,11 @@ def process_document(self, document_id: str, user_id: str):
             logger.info(f"Splitting Document {document_id}")
             self.update_state(state="PROGRESS", meta={"current": 10, "total": 100, "status": "Splitting document"})
 
-            chunks = split_document(content, chunk_size=500, chunk_overlap=100)
+            chunks = split_document(
+                content,
+                chunk_size=settings.DOC_PROCESSING_CHUNK_SIZE,
+                chunk_overlap=settings.DOC_PROCESSING_CHUNK_OVERLAP,
+            )
             chunk_length = len(chunks)
             
             self.update_state(state="PROGRESS", meta={"current": 40, "total": 100, "status": "Storing chunks"})
