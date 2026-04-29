@@ -7,6 +7,8 @@ An AI-powered document chatbot built with FastAPI, SQLModel, and `fastapi-events
 - **Asynchronous Architecture**: Fully async database operations using `aiosqlite`.
 - **Authentication**: JWT-based auth with access and refresh tokens.
 - **Event-Driven**: Post-registration triggers via `fastapi-events`.
+- **Background Processing**: Asynchronous document processing using Celery backed by Redis.
+- **Task Monitoring**: Web-based monitoring for Celery tasks via Flower.
 - **Standardized API Responses**: Consistent success and error shapes across all endpoints.
 - **Automated CI**: GitHub Actions integration for linting, formatting, and testing.
 
@@ -28,9 +30,20 @@ An AI-powered document chatbot built with FastAPI, SQLModel, and `fastapi-events
 
 ### Running the Application
 
-```bash
-uv run fastapi dev
-```
+1. Ensure your Redis server is running (check `REDIS_URL` in `.env`).
+2. Start the Celery worker for background document processing:
+   ```bash
+   uv run celery -A queues.celery_task.app worker --loglevel=info
+   ```
+3. Start the FastAPI development server:
+   ```bash
+   uv run fastapi dev
+   ```
+4. (Optional) Start the Flower dashboard to monitor Celery tasks:
+   ```bash
+   uv run celery -A queues.celery_task.app flower
+   ```
+   The dashboard will be available at `http://localhost:5555`.
 
 ### Running Tests
 
