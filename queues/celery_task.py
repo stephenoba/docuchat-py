@@ -1,3 +1,4 @@
+# NOTE (TO SELF): consider using an alternative like taskiq or arq for async support
 from uuid import UUID
 
 from sqlalchemy import delete
@@ -49,8 +50,7 @@ def process_document(self, document_id: str, user_id: str):
             document.status = DocumentStatus.PROCESSING.value
             session.add(document)
             session.commit()
-            
-            # Fetch content while session is active (expire_on_commit=False helps here too)
+
             content = document.content
             
             logger.info(f"Splitting Document {document_id}")
@@ -66,7 +66,6 @@ def process_document(self, document_id: str, user_id: str):
             self.update_state(state="PROGRESS", meta={"current": 40, "total": 100, "status": "Storing chunks"})
             logger.info(f"Storing {chunk_length} chunks for Document {document_id}")
         
-            # Use a transaction for chunk operations and document update
             session.execute(delete(Chunk).where(Chunk.document_id == document_id))
             
             new_chunks = [Chunk(document_id=document_id, content=chunk, index=index) for index, chunk in enumerate(chunks)]

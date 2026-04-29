@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     DOC_PROCESSING_MAX_RETRIES: int = 3
     DOC_PROCESSING_RETRY_BACKOFF: bool = True
 
+    # OpenAI Settings
+    OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    OPENAI_MODEL: str = "gpt-4o"
+    OPENAI_RETRY_DELAY: int = 1
+
 
 @lru_cache
 def get_settings() -> Settings:
