@@ -36,4 +36,5 @@ jobs:
           SECRET_KEY: "ci_secret"
           REFRESH_SECRET_KEY: "ci_refresh_secret"
           DATABASE_URL: "sqlite+aiosqlite:///ci.sqlite3"
+          REDIS_URL: "redis://localhost:6379/0"
           DEBUG: "false"
