@@ -5,11 +5,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi_events.dispatcher import dispatch
 from sqlmodel import select, and_, desc, asc, func
+from celery.result import AsyncResult
 
 from auth import PermissionChecker
-from models import User, Document
+from models import User, Document, DocumentStatus
 from schemas import SuccessResponse
-from schemas.document import DocumentCreate, DocumentUpdate, DocumentResponse
+from schemas.document import DocumentCreate, DocumentUpdate, DocumentResponse, DocumentStatusUpdate
 from dbmanager import async_session
 from queues.celery_task import process_document
 from config import DOCUMENT_EVENTS
@@ -48,23 +49,6 @@ async def create_document(
         user_id=str(user.id),
     )
 
-    # # Simulate processing (for now)
-    # processing_start = datetime.now()
-    # # Mocking chunking
-    # num_chunks = max(1, len(data.content) // 500)
-    # document.chunk_count = num_chunks
-    # await Document.objects.save(document)
-    # processing_end = datetime.now()
-    # duration_ms = int((processing_end - processing_start).total_seconds() * 1000)
-
-    # Log and Dispatch Processed
-    # processed_metadata = {
-    #     "document_id": str(document.id),
-    #     "chunk_count": num_chunks,
-    #     "duration_ms": duration_ms,
-    # }
-    # dispatch(DOCUMENT_EVENTS.PROCESSED, payload={"user_id": user.id, **processed_metadata})
-
     response_data = DocumentResponse.model_validate(document)
     response_data.task_id = task.id
 
@@ -72,7 +56,6 @@ async def create_document(
         data=response_data,
         message="Document created successfully",
     )
-
 
 @document_router.get("", response_model=SuccessResponse[List[DocumentResponse]])
 async def list_documents(
@@ -153,6 +136,39 @@ async def get_document(
     return SuccessResponse[DocumentResponse](
         data=DocumentResponse.model_validate(document),
         message="Document retrieved successfully",
+    )
+
+@document_router.get("/{document_id}/processing-status", response_model=SuccessResponse[DocumentStatusUpdate])
+async def get_document_processing_status(
+    user: Annotated[User, Depends(PermissionChecker("documents:read"))],
+    document_id: UUID,
+):
+    document = await Document.objects.get(
+        id=document_id, user_id=user.id, deleted_at=None
+    )
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    task_id = document.task_id
+    if task_id:
+        task = AsyncResult(task_id, app=process_document)
+        if task.state == "PENDING" and document.status != DocumentStatus.PENDING.value:
+            document.status = DocumentStatus.PENDING.value
+        elif task.state == "PROGRESS" and document.status != DocumentStatus.PROCESSING.value:
+            document.status = DocumentStatus.PROCESSING.value
+        elif task.state == "SUCCESS" and document.status != DocumentStatus.READY.value:
+            document.status = DocumentStatus.READY.value
+        elif task.state == "FAILURE" and document.status != DocumentStatus.FAILED.value:
+            document.status = DocumentStatus.FAILED.value
+            document.error = str(task.info)
+
+        await Document.objects.save(document)
+
+    return SuccessResponse[DocumentStatusUpdate](
+        data=DocumentStatusUpdate.model_validate(document),
+        message="Document processing status retrieved successfully",
     )
 
 

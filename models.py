@@ -205,6 +205,7 @@ class Document(SQLModel, table=True):
     file_size_bytes: int | None = None
     chunk_count: int = Field(default=0)
     status: str = Field(default=DocumentStatus.PENDING.value)
+    task_id: str | None = None
     error: str | None = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
