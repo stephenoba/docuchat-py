@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_MODEL: str = "gpt-4o"
     OPENAI_RETRY_DELAY: int = 1
+    WEBHOOK_SECRET: str = ""
 
 
 @lru_cache
