@@ -32,6 +32,14 @@ class DocumentStatus(Enum):
     SUCCESS: str = "success"
 
 
+class WebhookEventStatus(Enum):
+    PENDING: str = "pending"
+    PROCESSING: str = "processing"
+    READY: str = "ready"
+    FAILED: str = "failed"
+    SUCCESS: str = "success"
+
+
 class TierOptions(Enum):
     FREE: str = "free"
     PRO: str = "pro"
@@ -364,3 +372,26 @@ class RefreshToken(SQLModel, table=True):
     user: User = Relationship(back_populates="refresh_tokens")
 
     objects: ClassVar[QueryManager] = QueryManager()
+
+
+# ================================
+# Webhook
+# ================================
+
+class WebhookEvent(SQLModel, table=True):
+    """WebhookEvent model"""
+
+    id: str = Field(
+        primary_key=True,
+        index=True,
+        nullable=False,
+    )
+    provider: str = Field(index=True, nullable=False)
+    event_type: str = Field(index=True, nullable=False)
+    payload: str = Field(nullable=False)
+    recieved_at: datetime = Field(default_factory=datetime.now)
+    processed_at: datetime | None = None
+    status: str = Field(default=WebhookEventStatus.PENDING.value)
+
+    objects: ClassVar[QueryManager] = QueryManager()
+    
