@@ -4,6 +4,11 @@ from logger import client_logger as logger
 
 settings = get_settings()
 
+def check_rate_limit_remaining_requests(response):
+    remaining = int(response.header.get("x-ratelimit-remaining-requests", '999'))
+
+    if remaining < 50:
+        logger.warn(f"Rate limit getting low: {remaining} remaining")
 
 def log_request(request):
     logger.info(f"Request: {request.method} {request.url}")
@@ -26,7 +31,10 @@ class OpenAIService:
             "Content-Type": "application/json",
             "User-Agent": "DocuChat/1.0",
         }
-        self.hooks = {"request": [log_request], "response": [handle_response]}
+        self.hooks = {
+            "request": [log_request],
+            "response": [handle_response, check_rate_limit_remaining_requests]
+        }
 
     def get_client(self):
         """Returns a synchronous client for Celery tasks."""
