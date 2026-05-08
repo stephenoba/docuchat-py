@@ -1,6 +1,6 @@
 import json
 import hashlib
-from typing import Any, TypeVar, Optional, List, Callable
+from typing import Any, TypeVar, Optional, Callable
 import redis.asyncio as redis
 
 from config import get_settings
