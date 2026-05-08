@@ -45,6 +45,28 @@ An AI-powered document chatbot built with FastAPI, SQLModel, and `fastapi-events
    ```
    The dashboard will be available at `http://localhost:5555`.
 
+### Running with Local LLMs (Ollama)
+
+You can run DocuChat-Py entirely locally using Ollama.
+
+1.  **Install Ollama**: Download it from [ollama.com](https://ollama.com).
+2.  **Pull a Model**: Run the following command to pull your preferred model:
+    ```bash
+    ollama pull llama3.1
+    ollama pull nomic-embed-text
+    ```
+3.  **Configure `.env`**: Ensure your settings point to your local Ollama instance:
+    ```env
+    OPENAI_API_KEY=ollama
+    OPENAI_BASE_URL=http://localhost:11434/v1
+    OPENAI_MODEL=llama3.1:latest
+    OPENAI_EMBEDDING_MODEL=nomic-embed-text
+    ```
+4. **Test**: Run the following command to test your setup:
+   ```bash
+   python scripts/test_ollama.py
+   ```
+
 ### Running Tests
 
 ```bash

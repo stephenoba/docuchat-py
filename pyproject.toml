@@ -22,6 +22,7 @@ dependencies = [
     "flower>=2.0.1",
     "requests>=2.33.1",
     "pybreaker>=1.2.0",
+    "redis>=6.4.0",
 ]
 
 [dependency-groups]

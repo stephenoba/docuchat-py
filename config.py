@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     REFRESH_SECRET_KEY: str
     DATABASE_URL: str
     REDIS_URL: str
+    REDIS_HOST: str
+    REDIS_PORT: int
     DEBUG: bool
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 Day
@@ -53,10 +55,11 @@ class Settings(BaseSettings):
     DOC_PROCESSING_MAX_RETRIES: int = 3
     DOC_PROCESSING_RETRY_BACKOFF: bool = True
 
-    # OpenAI Settings
+    # OpenAI Settings (Ollama compatible)
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_MODEL: str = "gpt-4o"
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_RETRY_DELAY: int = 1
     WEBHOOK_SECRET: str = ""
 
