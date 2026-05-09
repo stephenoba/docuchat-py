@@ -1,15 +1,14 @@
 import asyncio
-import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from app.models import User, Role, Permission, RolePermission
 from app.auth.auth import register_user
 from app.models.dbmanager import async_session
+
+load_dotenv()
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # since we are using alembic to manage migrations, ensure to migrate before running this script
 # alembic upgrade head
