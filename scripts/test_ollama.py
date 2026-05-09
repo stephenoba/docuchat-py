@@ -2,8 +2,9 @@ import asyncio
 import httpx
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent))
-from services.openai import OpenAIService
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from app.services.openai import OpenAIService
 
 async def test_ollama_connection():
     service = OpenAIService()

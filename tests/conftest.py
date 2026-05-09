@@ -11,9 +11,9 @@ os.environ["REFRESH_SECRET_KEY"] = "testrefreshsecret"
 os.environ["DEBUG"] = "false"
 
 # We must import after environment configs are overridden
-from main import app  # noqa: E402
-from dbmanager import async_engine, SQLModel  # noqa: E402
-from seed_db import seed_rbac  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models.dbmanager import async_engine, SQLModel  # noqa: E402
+from scripts.seed_db import seed_rbac  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
