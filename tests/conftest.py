@@ -9,6 +9,9 @@ os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB_PATH}"
 os.environ["SECRET_KEY"] = "testsecret"
 os.environ["REFRESH_SECRET_KEY"] = "testrefreshsecret"
 os.environ["DEBUG"] = "false"
+os.environ["REDIS_HOST"] = "localhost"
+os.environ["REDIS_PORT"] = "6379"
+os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 
 # We must import after environment configs are overridden
 from app.main import app  # noqa: E402
