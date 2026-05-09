@@ -1,17 +1,7 @@
 import json
-import hashlib
 from typing import Any, TypeVar, Optional, Callable
-import redis.asyncio as redis
+from extensions.redis import redis_client as cache_redis
 
-from config import get_settings
-
-settings = get_settings()
-
-cache_redis = redis.Redis(
-    host=settings.REDIS_HOST, 
-    port=settings.REDIS_PORT,
-    decode_responses=True
-)
 
 T = TypeVar("T")
 
@@ -110,11 +100,3 @@ async def cache_del_pattern(pattern: str) -> None:
 async def cache_clear():
     """Clear the cache."""
     await cache_redis.flushdb()
-
-def hash_key(*parts: str) -> str:
-    """
-    Generate a short deterministic hash for a key based on its parts.
-    Returns the first 16 characters of the SHA-256 hash.
-    """
-    data = ":".join(parts)
-    return hashlib.sha256(data.encode()).hexdigest()[:16]
