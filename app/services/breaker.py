@@ -9,17 +9,28 @@ openai_service = OpenAIService()
 
 
 @retry_with_backoff(max_retries=3)
-async def _call_openai_async(path: str, body: dict):
+async def _call_openai_async(method: str, path: str, body: dict = {}):
     async with openai_service.get_async_client() as client:
-        response = await client.post(path, json=body)
-        return response.json()
+        response = {}
+        if method.lower() == "post":
+            response = await client.post(path, json=body)
+        elif method.lower() == "get":
+            response = await client.get(path)
+        else:
+            raise
+        return response
 
 
 @retry_with_backoff(max_retries=3)
-def _call_openai_sync(path: str, body: dict):
+def _call_openai_sync(method: str, path: str, body: dict = {}):
     with openai_service.get_client() as client:
-        response = client.post(path, json=body)
-        return response.json()
+        if method.lower() == "post":
+            response = client.post(path, json=body)
+        elif method.lower() == "get":
+            response = client.get(path)
+        else:
+            raise
+        return response
 
 
 class LogListener(pybreaker.CircuitBreakerListener):
@@ -38,10 +49,10 @@ openai_breaker = pybreaker.CircuitBreaker(
 )
 
 
-async def openai_request(path: str, body: Any):
+async def openai_request(method: str, path: str, body: Any = {}):
     """Async version for FastAPI routes"""
     try:
-        return await openai_breaker.call_async(_call_openai_async, path, body)
+        return await openai_breaker.call_async(_call_openai_async, method, path, body)
     except pybreaker.CircuitBreakerError:
         # FALLBACK: Instant failure if the service is down
         raise Exception("OpenAI is temporarily unavailable. Please try again shortly.")
