@@ -1,6 +1,5 @@
 import pytest
 from httpx import AsyncClient
-from fastapi import HTTPException
 from app.middleware.exception_handlers import scrub_sensitive_data
 
 def test_scrub_sensitive_data_logic():
