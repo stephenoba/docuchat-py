@@ -20,7 +20,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
                 message=detail,
             )
         ).model_dump(),
+        headers=getattr(exc, "headers", None),
     )
+
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

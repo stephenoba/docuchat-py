@@ -43,6 +43,8 @@ class WebhookEventStatus(Enum):
 class TierOptions(Enum):
     FREE: str = "free"
     PRO: str = "pro"
+    ENTERPRISE: str = "enterprise"
+
 
 
 class User(SQLModel, table=True):

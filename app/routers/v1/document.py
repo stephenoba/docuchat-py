@@ -14,15 +14,20 @@ from app.schemas.document import DocumentCreate, DocumentUpdate, DocumentRespons
 from app.models.dbmanager import async_session
 from app.queues.celery_task import process_document
 from app.core.config import DOCUMENT_EVENTS
+from app.dependencies.rate_limiter import general_limiter, upload_limiter
 
-document_router = APIRouter()
+
+document_router = APIRouter(dependencies=[Depends(general_limiter)])
+
 
 
 @document_router.post(
     "",
     response_model=SuccessResponse[DocumentResponse],
     status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(upload_limiter)],
 )
+
 async def create_document(
     user: Annotated[User, Depends(PermissionChecker("documents:create"))],
     data: DocumentCreate,

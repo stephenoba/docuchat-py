@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
+
 from fastapi_events.dispatcher import dispatch
 
 from app.auth import register_user, authenticate_user, refresh_access_token, logout_user
@@ -12,6 +13,8 @@ from app.auth.errors import (
 from app.schemas import SuccessResponse
 from app.schemas.auth import UserRegisterRequest, UserResponse, TokenResponse
 from app.core.config import AUTH_EVENTS
+from app.dependencies.rate_limiter import auth_limiter
+
 
 auth_router = APIRouter()
 
@@ -20,7 +23,9 @@ auth_router = APIRouter()
     "/register",
     response_model=SuccessResponse[UserResponse],
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(auth_limiter)],
 )
+
 async def register(user_data: UserRegisterRequest):
     try:
         user = await register_user(
@@ -40,7 +45,8 @@ async def register(user_data: UserRegisterRequest):
         )
 
 
-@auth_router.post("/token", response_model=SuccessResponse[TokenResponse])
+@auth_router.post("/token", response_model=SuccessResponse[TokenResponse], dependencies=[Depends(auth_limiter)])
+
 async def token(email: str, password: str):
     try:
         tokens = await authenticate_user(email, password)

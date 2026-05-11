@@ -10,7 +10,9 @@ from .auth import (
     get_current_user,
     logout_user,
     PermissionChecker,
+    create_access_token,
 )
+
 from app.auth.errors import (
     UserNotFoundError,
     InactiveUserError,
@@ -31,7 +33,9 @@ __all__ = [
     "get_current_user",
     "logout_user",
     "PermissionChecker",
+    "create_access_token",
     # Errors
+
     "UserNotFoundError",
     "InactiveUserError",
     "UserAlreadyExistsError",

@@ -12,8 +12,11 @@ from app.schemas import SuccessResponse
 from app.schemas.admin import RoleResponse, RoleAssignmentRequest
 from app.models.dbmanager import async_session
 from app.core.config import ADMIN_EVENTS
+from app.dependencies.rate_limiter import general_limiter
 
-admin_router = APIRouter()
+
+admin_router = APIRouter(dependencies=[Depends(general_limiter)])
+
 
 @admin_router.get("/roles", response_model=SuccessResponse[List[RoleResponse]])
 async def list_roles(

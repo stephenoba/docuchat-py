@@ -16,8 +16,11 @@ from app.schemas.conversation import (
     MessageResponse,
 )
 from app.models.dbmanager import async_session
+from app.dependencies.rate_limiter import general_limiter, chat_limiter
 
-conversation_router = APIRouter()
+
+conversation_router = APIRouter(dependencies=[Depends(general_limiter)])
+
 
 
 @conversation_router.post(
@@ -133,7 +136,9 @@ async def delete_conversation(
     "/{conversation_id}/messages",
     response_model=SuccessResponse[MessageResponse],
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(chat_limiter)],
 )
+
 async def send_message(
     user: Annotated[User, Depends(PermissionChecker("conversations:create"))],
     conversation_id: UUID,
