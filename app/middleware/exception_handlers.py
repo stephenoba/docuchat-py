@@ -4,6 +4,8 @@ from fastapi.exceptions import RequestValidationError
 
 from app.schemas import ErrorResponse, ErrorBody, ErrorDetail
 from app.core.logger import error_logger as logger
+from app.core.security import scrub_sensitive_data
+
 
 
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -17,8 +19,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content=ErrorResponse(
             error=ErrorBody(
                 code=error_code,
-                message=detail,
+                message=scrub_sensitive_data(detail),
             )
+
         ).model_dump(),
         headers=getattr(exc, "headers", None),
     )
@@ -32,8 +35,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         details.append(
             ErrorDetail(
                 field=field or "unknown",
-                message=error["msg"],
+                message=scrub_sensitive_data(error["msg"]),
             )
+
         )
 
     logger.warning(f"[Validation Error] {request.method} {request.url.path} - {len(details)} fields failed")
@@ -57,7 +61,8 @@ async def generic_exception_handler(request: Request, exc: Exception):
         content=ErrorResponse(
             error=ErrorBody(
                 code="INTERNAL_ERROR",
-                message="An unexpected error occurred",
+                message=scrub_sensitive_data(str(exc)) if not isinstance(exc, HTTPException) else "An unexpected error occurred",
             )
+
         ).model_dump(),
     )
