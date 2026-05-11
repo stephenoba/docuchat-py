@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+
 from fastapi.exceptions import RequestValidationError
 from fastapi_events.middleware import EventHandlerASGIMiddleware
 from fastapi_events.handlers.local import local_handler
@@ -12,15 +13,22 @@ from app.middleware.exception_handlers import (
     validation_exception_handler,
     generic_exception_handler,
 )
+from app.middleware.xss_middleware import XSSMiddleware
+from app.middleware.security_headers_middleware import SecurityHeadersMiddleware
+
+
 import app.events  # noqa: F401
 
 settings = get_settings()
 
 app = FastAPI()
 
-# Middleware
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(EventHandlerASGIMiddleware, handlers=[local_handler])
+
+app.add_middleware(XSSMiddleware)
 app.middleware("http")(api_logging_middleware)
+
 
 # Exception handlers
 app.add_exception_handler(HTTPException, http_exception_handler)

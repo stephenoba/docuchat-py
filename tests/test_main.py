@@ -9,3 +9,10 @@ async def test_health_check(client: AsyncClient):
     body = response.json()
     assert body["success"] is True
     assert body["data"]["status"] == "ok"
+    
+    # Check for security headers
+    assert "X-Frame-Options" in response.headers
+    assert "X-Content-Type-Options" in response.headers
+    assert "Strict-Transport-Security" in response.headers
+    assert "Referrer-Policy" in response.headers
+
