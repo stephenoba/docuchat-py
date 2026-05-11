@@ -1,22 +1,15 @@
 import pytest
-from httpx import AsyncClient
-from app.dependencies.rate_limiter import auth_limiter, general_limiter, chat_limiter
-from app.extensions.redis import redis_client
-from app.auth import create_access_token
-from app.models import User
-from app.models.dbmanager import async_session
-from sqlmodel import select
 import uuid
-
+from httpx import AsyncClient
+from sqlmodel import select
+from app.dependencies.rate_limiter import auth_limiter, general_limiter, chat_limiter
+from app.auth import create_access_token
+from app.models import User, Role, UserRole, Conversation
+from app.models.dbmanager import async_session
 
 @pytest.mark.asyncio
-async def test_all_rate_limits(client: AsyncClient):
-    """
-    Combined test to avoid event loop closure issues with global redis_client.
-    """
-    await redis_client.flushdb()
-    
-    # 1. Auth Rate Limit
+async def test_auth_rate_limit(client: AsyncClient):
+    # Mock auth limit to 2
     orig_auth = auth_limiter.requests
     auth_limiter.requests = 2
     try:
@@ -37,7 +30,9 @@ async def test_all_rate_limits(client: AsyncClient):
     finally:
         auth_limiter.requests = orig_auth
 
-    # 2. Tiered Rate Limit - Pro
+@pytest.mark.asyncio
+async def test_tiered_rate_limit_pro_tier(client: AsyncClient):
+    # Mock pro tier limit to 2
     orig_gen = general_limiter.tiered_limits.copy()
     general_limiter.tiered_limits["pro"] = (2, 60000)
     try:
@@ -46,8 +41,6 @@ async def test_all_rate_limits(client: AsyncClient):
             async with session.begin():
                 user = User(id=user_id, email="pro@example.com", username="pro@example.com", tier="pro", password_hash="hash")
                 session.add(user)
-                # Assign role
-                from app.models import Role, UserRole
                 role = (await session.execute(select(Role).where(Role.name == "member"))).scalars().first()
                 if role:
                     session.add(UserRole(user_id=user_id, role_id=role.id))
@@ -65,7 +58,9 @@ async def test_all_rate_limits(client: AsyncClient):
     finally:
         general_limiter.tiered_limits = orig_gen
 
-    # 3. Chat Rate Limit - Enterprise
+@pytest.mark.asyncio
+async def test_chat_rate_limit_enterprise(client: AsyncClient):
+    # Mock enterprise tier limit to 2 for chat
     orig_chat = chat_limiter.tiered_limits.copy()
     chat_limiter.tiered_limits["enterprise"] = (2, 60000)
     try:
@@ -75,16 +70,12 @@ async def test_all_rate_limits(client: AsyncClient):
             async with session.begin():
                 user = User(id=user_id, email="ent@example.com", username="ent@example.com", tier="enterprise", password_hash="hash")
                 session.add(user)
-                # Assign role
-                from app.models import Role, UserRole
                 role = (await session.execute(select(Role).where(Role.name == "member"))).scalars().first()
                 if role:
                     session.add(UserRole(user_id=user_id, role_id=role.id))
                 
-                from app.models import Conversation
                 conv = Conversation(id=conv_id, user_id=user_id, title="Test")
                 session.add(conv)
-
         
         token = create_access_token(user)
         headers = {"Authorization": f"Bearer {token}"}
@@ -99,5 +90,3 @@ async def test_all_rate_limits(client: AsyncClient):
         assert resp_429.status_code == 429
     finally:
         chat_limiter.tiered_limits = orig_chat
-
-    await redis_client.flushdb()

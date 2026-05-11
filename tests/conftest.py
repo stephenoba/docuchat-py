@@ -17,6 +17,8 @@ os.environ["REDIS_URL"] = "redis://localhost:6379/0"
 from app.main import app  # noqa: E402
 from app.models.dbmanager import async_engine, SQLModel  # noqa: E402
 from scripts.seed_db import seed_rbac  # noqa: E402
+from app.extensions.redis import redis_client  # noqa: E402
+
 
 
 @pytest.fixture(autouse=True)
@@ -38,6 +40,21 @@ def cleanup_test_db():
     yield
     if TEST_DB_PATH.exists():
         TEST_DB_PATH.unlink()
+
+
+@pytest.fixture(autouse=True)
+async def clear_redis():
+    """Flush redis and disconnect connection pool between tests to avoid loop mismatch."""
+    try:
+        await redis_client.flushdb()
+    except Exception:
+        pass
+    yield
+    try:
+        await redis_client.connection_pool.disconnect()
+    except Exception:
+        pass
+
 
 
 @pytest.fixture
