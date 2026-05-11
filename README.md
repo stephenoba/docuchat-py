@@ -87,6 +87,8 @@ You can run DocuChat-Py entirely locally using Ollama.
     OPENAI_MODEL=llama3.1:latest
     OPENAI_EMBEDDING_MODEL=nomic-embed-text
     ```
+    *Alternatively, you can copy the contents of the `_docker-compose-ollama.yml` file into `docker-compose.yml` and run the entire stack with Ollama.*
+
     *Note: If running the app inside **Docker**, use `http://host.docker.internal:11434/v1` as the base URL.*
 
 ---
