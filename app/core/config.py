@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     OPENAI_RETRY_DELAY: int = 1
     WEBHOOK_SECRET: str = ""
+    CORS_ORIGINS: list[str] = ["*"]
+
 
 
 @lru_cache

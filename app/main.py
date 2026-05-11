@@ -1,4 +1,6 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
 
 from fastapi.exceptions import RequestValidationError
 from fastapi_events.middleware import EventHandlerASGIMiddleware
@@ -22,6 +24,14 @@ import app.events  # noqa: F401
 settings = get_settings()
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(EventHandlerASGIMiddleware, handlers=[local_handler])
