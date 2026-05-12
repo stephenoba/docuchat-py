@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     DOC_PROCESSING_RETRY_BACKOFF: bool = True
 
     # OpenAI Settings (Ollama compatible)
+    USE_OLLAMA: bool = True
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_MODEL: str = "gpt-4o"
