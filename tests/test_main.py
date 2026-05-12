@@ -10,9 +10,9 @@ async def test_health_check_live(client: AsyncClient):
     assert body["success"] is True
     assert body["data"]["status"] == "ok"
     
-    # Verify that security headers are EXEMPT for health endpoints
-    assert "X-Frame-Options" not in response.headers
-    assert "Strict-Transport-Security" not in response.headers
+    # Verify that security headers are present for health endpoints
+    assert "X-Frame-Options" in response.headers
+    assert "Strict-Transport-Security" in response.headers
 
 
 @pytest.mark.asyncio
@@ -23,8 +23,8 @@ async def test_health_check_ready(client: AsyncClient):
     body = response.json()
     assert "checks" in body["data"]
     
-    # Verify exemption
-    assert "X-Frame-Options" not in response.headers
+    # Verify that security headers are present for health endpoints
+    assert "X-Frame-Options" in response.headers
 
 @pytest.mark.asyncio
 async def test_security_headers_on_api(client: AsyncClient):
