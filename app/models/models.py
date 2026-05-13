@@ -1,10 +1,16 @@
 import uuid
 from enum import Enum
 from datetime import datetime
-from typing import List, ClassVar
+from typing import List, ClassVar, Any
 from sqlmodel import Field, SQLModel, Relationship
+from sqlalchemy import Column
+from pgvector.sqlalchemy import Vector
 
+from app.core.config import get_settings
 from app.models.dbmanager import QueryManager, UserManager
+from app.core.utils import utcnow
+
+settings = get_settings()
 
 __all__ = [
     "User",
@@ -63,8 +69,8 @@ class User(SQLModel, table=True):
     tokens_used: int = Field(default=0)
     token_limit: int = Field(default=10000)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
 
     documents: List["Document"] = Relationship(
         back_populates="user",
@@ -114,7 +120,7 @@ class Role(SQLModel, table=True):
     name: str = Field(index=True, unique=True)
     description: str | None = None
     is_default: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utcnow)
 
     users: List["UserRole"] = Relationship(back_populates="role")
     permissions: List["RolePermission"] = Relationship(back_populates="role")
@@ -135,7 +141,7 @@ class Permission(SQLModel, table=True):
     description: str | None = None
     resource: str
     action: str
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utcnow)
 
     roles: List["RolePermission"] = Relationship(back_populates="permission")
 
@@ -161,8 +167,8 @@ class UserRole(SQLModel, table=True):
         index=True, foreign_key="user.id", nullable=True, ondelete="SET NULL"
     )
     is_default: bool = Field(default=False)
-    assigned_at: datetime = Field(default_factory=datetime.now)
-    created_at: datetime = Field(default_factory=datetime.now)
+    assigned_at: datetime = Field(default_factory=utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
     user: User = Relationship(
         back_populates="roles",
@@ -188,7 +194,7 @@ class RolePermission(SQLModel, table=True):
     permission_id: uuid.UUID = Field(
         index=True, foreign_key="permission.id", nullable=False, ondelete="CASCADE"
     )
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utcnow)
 
     role: Role = Relationship(back_populates="permissions")
     permission: Permission = Relationship(back_populates="roles")
@@ -217,8 +223,8 @@ class Document(SQLModel, table=True):
     status: str = Field(default=DocumentStatus.PENDING.value)
     task_id: str | None = None
     error: str | None = None
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
     deleted_at: datetime | None = Field(default=None)
     deleted_by: uuid.UUID | None = Field(default=None, foreign_key="user.id")
 
@@ -247,7 +253,8 @@ class Chunk(SQLModel, table=True):
     index: int = Field(index=True)
     content: str
     token_count: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.now)
+    embedding: Any = Field(sa_column=Column(Vector(settings.EMBEDDING_DIMENSION), nullable=True))
+    created_at: datetime = Field(default_factory=utcnow)
 
     document: Document = Relationship(back_populates="chunks")
 
@@ -267,8 +274,8 @@ class Conversation(SQLModel, table=True):
         index=True, foreign_key="user.id", nullable=False, ondelete="CASCADE"
     )
     title: str
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
 
     user: User = Relationship(back_populates="conversations")
     messages: List["Message"] = Relationship(back_populates="conversation")
@@ -299,7 +306,7 @@ class Message(SQLModel, table=True):
     completion_tokens: int | None = None
     cost_usd: float | None = None
     latency_ms: int | None = None
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utcnow)
 
     conversation: Conversation = Relationship(back_populates="messages")
     document: Document | None = Relationship(back_populates="messages")
@@ -324,7 +331,7 @@ class UsageLog(SQLModel, table=True):
     cost_usd: float
     # In SQLModel and SQLAlchemy, the attribute name metadata is strictly reserved because it stores the central collection of Table objects and schema constructs for your database.
     log_metadata: str | None = None
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utcnow)
 
     user: User = Relationship(back_populates="usage_logs")
 
@@ -346,7 +353,7 @@ class AITrace(SQLModel, table=True):
     )
     operation: str
     data: str = Field(nullable=False)
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utcnow)
 
     user: User = Relationship(back_populates="ai_traces")
 
@@ -369,7 +376,7 @@ class RefreshToken(SQLModel, table=True):
     is_revoked: bool = Field(default=False)
     is_used: bool = Field(default=False)
     expires_at: datetime
-    created_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=utcnow)
 
     user: User = Relationship(back_populates="refresh_tokens")
 
@@ -391,7 +398,7 @@ class WebhookEvent(SQLModel, table=True):
     provider: str = Field(index=True, nullable=False)
     event_type: str = Field(index=True, nullable=False)
     payload: str = Field(nullable=False)
-    recieved_at: datetime = Field(default_factory=datetime.now)
+    recieved_at: datetime = Field(default_factory=utcnow)
     processed_at: datetime | None = None
     status: str = Field(default=WebhookEventStatus.PENDING.value)
 

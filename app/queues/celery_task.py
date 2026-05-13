@@ -8,8 +8,10 @@ from celery import Celery
 from app.core.config import get_settings
 from app.models.dbmanager import sync_engine
 from app.models.models import Document, DocumentStatus, Chunk
+import asyncio
 from app.core.utils import split_document
 from app.core.logger import task_logger as logger
+from app.services.embedding import generate_embeddings_batch_cached
 # from fastapi_events.dispatcher import dispatch
 # from config import DOCUMENT_EVENTS
 
@@ -57,19 +59,39 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
             logger.info(f"[{correlation_id}] Splitting Document {document_id}")
             self.update_state(state="PROGRESS", meta={"current": 10, "total": 100, "status": "Splitting document"})
 
-            chunks = split_document(
+            chunk_data = split_document(
                 content,
                 chunk_size=settings.DOC_PROCESSING_CHUNK_SIZE,
                 chunk_overlap=settings.DOC_PROCESSING_CHUNK_OVERLAP,
+                model_name=settings.OPENAI_MODEL
             )
-            chunk_length = len(chunks)
+            chunk_length = len(chunk_data)
             
             self.update_state(state="PROGRESS", meta={"current": 40, "total": 100, "status": "Storing chunks"})
             logger.info(f"[{correlation_id}] Storing {chunk_length} chunks for Document {document_id}")
         
             session.execute(delete(Chunk).where(Chunk.document_id == document_id))
             
-            new_chunks = [Chunk(document_id=document_id, content=chunk, index=index) for index, chunk in enumerate(chunks)]
+            # Generate embeddings for all chunks in a single batch call
+            # We use asyncio.run to call the async service from the sync Celery task
+            logger.info(f"[{correlation_id}] Generating embeddings for {chunk_length} chunks")
+            self.update_state(state="PROGRESS", meta={"current": 60, "total": 100, "status": "Generating embeddings"})
+            
+            embeddings = asyncio.run(generate_embeddings_batch_cached(
+                [c["content"] for c in chunk_data], 
+                user_id=str(user_id), 
+                document_id=str(document_id)
+            ))
+            
+            new_chunks = [
+                Chunk(
+                    document_id=document_id, 
+                    content=chunk_data[index]["content"], 
+                    token_count=chunk_data[index]["token_count"],
+                    index=index,
+                    embedding=embeddings[index]
+                ) for index in range(chunk_length)
+            ]
             session.add_all(new_chunks)
 
             document.status = DocumentStatus.READY.value
