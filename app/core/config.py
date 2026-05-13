@@ -27,6 +27,10 @@ class DOCUMENT_EVENTS(Enum):
     RESTORED = "doc:restored"
 
 
+class AI_EVENTS(Enum):
+    EMBEDDING_GENERATED = "ai:embedding-generated"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env", env_file_encoding="utf-8"
@@ -59,6 +63,7 @@ class Settings(BaseSettings):
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_MODEL: str = "gpt-4o"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    EMBEDDING_DIMENSION: int = 1536 # OpenAI Text Embedding v3 small
     OPENAI_RETRY_DELAY: int = 1
     WEBHOOK_SECRET: str = ""
     CORS_ORIGINS: list[str] = ["*"]

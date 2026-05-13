@@ -23,6 +23,7 @@ from app.models.dbmanager import async_engine
 from app.extensions.redis import redis_client
 
 import app.events  # noqa: F401
+from app.core.utils import utcnow
 
 settings = get_settings()
 
@@ -58,7 +59,7 @@ async def live_check():
     return SuccessResponse(
         data={
             "status": "ok",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utcnow().isoformat(),
             "uptime": time.time(),
             "service": "docuchat"
         },
@@ -100,7 +101,7 @@ async def ready_check():
     return SuccessResponse(
         data={
             "status": "ok" if all_healthy else "partial_failure",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": utcnow().isoformat(),
             "checks": checks,
         },
         message="Service is ready" if all_healthy else "Service is degraded",

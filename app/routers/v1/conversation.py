@@ -17,6 +17,7 @@ from app.schemas.conversation import (
 )
 from app.models.dbmanager import async_session
 from app.dependencies.rate_limiter import general_limiter, chat_limiter
+from app.core.utils import utcnow
 
 
 conversation_router = APIRouter(dependencies=[Depends(general_limiter)])
@@ -107,7 +108,7 @@ async def update_conversation(
     if update_data:
         for key, value in update_data.items():
             setattr(conversation, key, value)
-        conversation.updated_at = datetime.now()
+        conversation.updated_at = utcnow()
         await Conversation.objects.save(conversation)
 
     return SuccessResponse[ConversationResponse](

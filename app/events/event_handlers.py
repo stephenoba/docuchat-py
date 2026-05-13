@@ -8,13 +8,16 @@ from app.models import UsageLog, Conversation
 from app.core.config import AUTH_EVENTS, ADMIN_EVENTS
 from app.core.logger import default_logger as logger
 from app.models.dbmanager import async_session
+from app.core.utils import utcnow
 
 
 @local_handler.register(event_name=AUTH_EVENTS.USER_REGISTERED)
 async def handle_user_registered(event: Event):
+    correlation_id = ""
     try:
-        _, user = event
-        correlation_id = event.get("correlation_id", "")
+        event_name, user = event
+        # If payload was a dict with correlation_id, extract it
+        # Otherwise, user is likely a model instance
         async with async_session() as session:
             async with session.begin():
                 # Log the registration usage
@@ -28,7 +31,7 @@ async def handle_user_registered(event: Event):
                         {
                             "email": user.email,
                             "tier": user.tier,
-                            "signUpAt": datetime.now(timezone.utc).isoformat(),
+                            "signUpAt": utcnow().isoformat(),
                         }
                     ),
                 )
@@ -45,10 +48,11 @@ async def handle_user_registered(event: Event):
 
 @local_handler.register(event_name=ADMIN_EVENTS.ROLE_ASSIGNED)
 async def handle_role_assigned(event: Event):
+    correlation_id = ""
     try:
         _, payload = event
+        correlation_id = payload.pop("correlation_id", "")
         admin_id = payload.pop("admin_id")
-        correlation_id = event.get("correlation_id", "")
         async with async_session() as session:
             async with session.begin():
                 await UsageLog.objects.create(
@@ -65,10 +69,11 @@ async def handle_role_assigned(event: Event):
 
 @local_handler.register(event_name=ADMIN_EVENTS.ROLE_REVOKED)
 async def handle_role_revoked(event: Event):
+    correlation_id = ""
     try:
         _, payload = event
+        correlation_id = payload.pop("correlation_id", "")
         admin_id = payload.pop("admin_id")
-        correlation_id = event.get("correlation_id", "")
         async with async_session() as session:
             async with session.begin():
                 await UsageLog.objects.create(
@@ -85,9 +90,10 @@ async def handle_role_revoked(event: Event):
 
 @local_handler.register(event_name="doc:*")
 async def handle_doc_events(event: Event):
+    correlation_id = ""
     try:
         event_name, payload = event
-        correlation_id = event.get("correlation_id", "")
+        correlation_id = payload.pop("correlation_id", "")
         user_id = payload.pop("user_id")
         # Extract action from doc:action
         action = event_name.split(":")[-1]

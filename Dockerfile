@@ -13,6 +13,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Final image
 FROM python:3.12-slim
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
@@ -25,7 +26,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Copy the application code
 COPY . .
 
-# Expose the port
 EXPOSE 8000
 
 # Default command (can be overridden in docker-compose)

@@ -1,7 +1,7 @@
 from typing import Annotated, List
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi_events.dispatcher import dispatch
 from sqlmodel import select, func
 from sqlalchemy.orm import selectinload
@@ -59,6 +59,7 @@ async def list_roles(
 
 @admin_router.post("/users/{user_id}/roles", response_model=SuccessResponse)
 async def assign_role(
+    request: Request,
     admin: Annotated[User, Depends(PermissionChecker("roles:manage"))],
     user_id: uuid.UUID,
     data: RoleAssignmentRequest
@@ -91,13 +92,18 @@ async def assign_role(
         await session.commit()
         
     # Log and dispatch
-    metadata = {"target_user_id": str(user_id), "role_name": data.role_name}
+    metadata = {
+        "target_user_id": str(user_id), 
+        "role_name": data.role_name,
+        "correlation_id": str(request.state.correlation_id)
+    }
     dispatch(ADMIN_EVENTS.ROLE_ASSIGNED, payload={"admin_id": admin.id, **metadata})
     
     return SuccessResponse(message=f"Role '{data.role_name}' assigned to user successfully")
 
 @admin_router.delete("/users/{user_id}/roles/{role_name}", response_model=SuccessResponse)
 async def revoke_role(
+    request: Request,
     admin: Annotated[User, Depends(PermissionChecker("roles:manage"))],
     user_id: uuid.UUID,
     role_name: str
@@ -118,7 +124,11 @@ async def revoke_role(
         await session.commit()
         
     # Log and dispatch
-    metadata = {"target_user_id": str(user_id), "role_name": role_name}
+    metadata = {
+        "target_user_id": str(user_id), 
+        "role_name": role_name,
+        "correlation_id": str(request.state.correlation_id)
+    }
     dispatch(ADMIN_EVENTS.ROLE_REVOKED, payload={"admin_id": admin.id, **metadata})
     
     return SuccessResponse(message=f"Role '{role_name}' revoked from user successfully")

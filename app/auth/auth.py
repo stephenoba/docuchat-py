@@ -13,6 +13,7 @@ from app.core.config import get_settings
 from app.models import User, RefreshToken, Role, UserRole, RolePermission
 from app.schemas.auth import TokenResponse
 from app.models.dbmanager import async_session
+from app.core.utils import utcnow
 from app.auth.errors import (
     UserNotFoundError,
     UserAlreadyExistsError,
@@ -114,9 +115,7 @@ async def logout_user(token: str) -> bool:
         raise InvalidTokenError("Refresh token is revoked")
     if refresh_token.is_used:
         raise InvalidTokenError("Refresh token is used")
-    if refresh_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(
-        timezone.utc
-    ):
+    if refresh_token.expires_at < utcnow():
         raise InvalidTokenError("Refresh token is expired")
     refresh_token.is_revoked = True
     await RefreshToken.objects.save(refresh_token)
@@ -127,7 +126,7 @@ def create_access_token(user: User) -> str:
     payload = {
         "sub": str(user.id),
         "tier": user.tier,
-        "exp": datetime.now(timezone.utc)
+        "exp": utcnow()
         + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
         "type": "access",
     }
@@ -135,14 +134,14 @@ def create_access_token(user: User) -> str:
 
 
 async def create_refresh_token(user: User) -> str:
-    expired_at = datetime.now(timezone.utc) + timedelta(
+    expired_at = utcnow() + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
     payload = {
         "sub": str(user.id),
         "tier": user.tier,
         "exp": expired_at,
-        "iat": datetime.now(timezone.utc),
+        "iat": utcnow(),
         "jti": str(uuid.uuid4()),
         "type": "refresh",
     }
@@ -198,9 +197,7 @@ async def refresh_access_token(refresh_token_str: str) -> TokenResponse:
             raise InvalidTokenError("Invalid refresh token")
         if refresh_token.is_revoked:
             raise InvalidTokenError("Refresh token is revoked")
-        if refresh_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(
-            timezone.utc
-        ):
+        if refresh_token.expires_at < utcnow():
             raise InvalidTokenError("Refresh token is expired")
         if refresh_token.is_used:
             raise InvalidTokenError("Refresh token is used")

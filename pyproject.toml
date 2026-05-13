@@ -27,6 +27,9 @@ dependencies = [
     "psycopg2-binary>=2.9.12",
     "bleach>=6.3.0",
     "secure>=2.0.1",
+    "pgvector>=0.4.2",
+    "alembic>=1.18.4",
+    "tiktoken>=0.12.0",
 ]
 
 [dependency-groups]

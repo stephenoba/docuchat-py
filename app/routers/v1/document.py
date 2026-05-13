@@ -14,6 +14,7 @@ from app.schemas.document import DocumentCreate, DocumentUpdate, DocumentRespons
 from app.models.dbmanager import async_session
 from app.queues.celery_task import process_document
 from app.core.config import DOCUMENT_EVENTS
+from app.core.utils import utcnow
 from app.dependencies.rate_limiter import general_limiter, upload_limiter
 
 
@@ -46,7 +47,7 @@ async def create_document(
         "title": document.title,
         "filename": document.filename,
         "file_size": document.file_size_bytes,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": utcnow().isoformat(),
         "correlation_id": str(request.state.correlation_id)
     }
     dispatch(DOCUMENT_EVENTS.CREATED, payload={"user_id": user.id, **metadata})
@@ -201,7 +202,7 @@ async def update_document(
     if update_data:
         for key, value in update_data.items():
             setattr(document, key, value)
-        document.updated_at = datetime.now()
+        document.updated_at = utcnow()
         await Document.objects.save(document)
 
     return SuccessResponse[DocumentResponse](
@@ -212,6 +213,7 @@ async def update_document(
 
 @document_router.delete("/{document_id}", response_model=SuccessResponse)
 async def delete_document(
+    request: Request,
     user: Annotated[User, Depends(PermissionChecker("documents:delete"))],
     document_id: UUID,
 ):
@@ -224,7 +226,7 @@ async def delete_document(
         )
 
     # Soft delete
-    document.deleted_at = datetime.now()
+    document.deleted_at = utcnow()
     document.deleted_by = user.id
     await Document.objects.save(document)
 
@@ -234,6 +236,7 @@ async def delete_document(
         "title": document.title,
         "deleted_at": document.deleted_at.isoformat(),
         "deleted_by": str(user.id),
+        "correlation_id": str(request.state.correlation_id)
     }
     dispatch(DOCUMENT_EVENTS.DELETED, payload={"user_id": user.id, **metadata})
 
@@ -244,6 +247,7 @@ async def delete_document(
     "/{document_id}/restore", response_model=SuccessResponse[DocumentResponse]
 )
 async def restore_document(
+    request: Request,
     user: Annotated[User, Depends(PermissionChecker("documents:update"))],
     document_id: UUID,
 ):
@@ -268,7 +272,8 @@ async def restore_document(
     metadata = {
         "document_id": str(document_id),
         "title": document.title,
-        "restored_at": datetime.now().isoformat(),
+        "restored_at": utcnow().isoformat(),
+        "correlation_id": str(request.state.correlation_id)
     }
     dispatch(DOCUMENT_EVENTS.RESTORED, payload={"user_id": user.id, **metadata})
 
