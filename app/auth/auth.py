@@ -226,7 +226,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_password_bearer)
         user_id = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-    except InvalidTokenError as e:
+    except InvalidTokenError:
         raise credentials_exception
     try:
         user_uuid = uuid.UUID(user_id)
