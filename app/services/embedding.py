@@ -1,6 +1,6 @@
 import hashlib
 import math
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from fastapi_events.dispatcher import dispatch
 from sqlalchemy import text

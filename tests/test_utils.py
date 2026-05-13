@@ -1,4 +1,3 @@
-import pytest
 from app.core.utils import split_document
 
 def test_split_document_basic():

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 from app.services.embedding import (
     generate_embeddings, 
     generate_embedding_cached, 
@@ -69,7 +69,8 @@ async def test_generate_embeddings_batch_cached(mock_gen, mock_set, mock_get):
     h1 = content_hash("text1")
     
     async def mock_get_side_effect(key):
-        if h1 in key: return [0.1, 0.1, 0.1]
+        if h1 in key:
+            return [0.1, 0.1, 0.1]
         return None
     
     mock_get.side_effect = mock_get_side_effect

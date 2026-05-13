@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, timezone
 
 from fastapi_events.handlers.local import local_handler
 from fastapi_events.typing import Event

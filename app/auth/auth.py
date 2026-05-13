@@ -1,6 +1,6 @@
 import uuid
 from typing import Annotated
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 import jwt
 from pwdlib import PasswordHash
