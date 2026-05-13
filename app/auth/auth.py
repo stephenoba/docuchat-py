@@ -10,7 +10,6 @@ from sqlmodel import select
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
-from app.core.logger import default_logger as logger
 from app.models import User, RefreshToken, Role, UserRole, RolePermission
 from app.schemas.auth import TokenResponse
 from app.models.dbmanager import async_session
@@ -228,7 +227,6 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_password_bearer)
         if user_id is None:
             raise credentials_exception
     except InvalidTokenError as e:
-        logger.error(e)
         raise credentials_exception
     try:
         user_uuid = uuid.UUID(user_id)

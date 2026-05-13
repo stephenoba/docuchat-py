@@ -35,16 +35,17 @@ app = Celery(
     retry_backoff_max=60,
     retry_jitter=True,
 )
-def process_document(self, document_id: str, user_id: str):
+def process_document(self, document_id: str, user_id: str, correlation_id: str):
     document_id = UUID(document_id)
     user_id = UUID(user_id)
+    correlation_id = UUID(correlation_id)
 
     with SessionLocal() as session:
         document = session.get(Document, document_id)
         if not document:
             raise ValueError(f"Document with id {document_id} not found")
         
-        logger.info(f"Starting processing for Document {document_id}")
+        logger.info(f"[{correlation_id}] Starting processing for Document {document_id}")
         
         try:
             document.status = DocumentStatus.PROCESSING.value
@@ -53,7 +54,7 @@ def process_document(self, document_id: str, user_id: str):
 
             content = document.content
             
-            logger.info(f"Splitting Document {document_id}")
+            logger.info(f"[{correlation_id}] Splitting Document {document_id}")
             self.update_state(state="PROGRESS", meta={"current": 10, "total": 100, "status": "Splitting document"})
 
             chunks = split_document(
@@ -64,7 +65,7 @@ def process_document(self, document_id: str, user_id: str):
             chunk_length = len(chunks)
             
             self.update_state(state="PROGRESS", meta={"current": 40, "total": 100, "status": "Storing chunks"})
-            logger.info(f"Storing {chunk_length} chunks for Document {document_id}")
+            logger.info(f"[{correlation_id}] Storing {chunk_length} chunks for Document {document_id}")
         
             session.execute(delete(Chunk).where(Chunk.document_id == document_id))
             
@@ -77,7 +78,7 @@ def process_document(self, document_id: str, user_id: str):
             session.commit()
             
             self.update_state(state="PROGRESS", meta={"current": 100, "total": 100, "status": "Completed"})
-            logger.info(f"Successfully processed Document {document_id}")
+            logger.info(f"[{correlation_id}] Successfully processed Document {document_id}")
             # TODO: Figure out a way to pass context here for dispatching events
             # dispatch(DOCUMENT_EVENTS.PROCESSED, payload={"user_id": user_id, "document_id": document_id, "chunk_count": chunk_length})
             return {"success": True, "chunk_length": chunk_length}
@@ -89,6 +90,6 @@ def process_document(self, document_id: str, user_id: str):
                 document.error = str(e)
                 session.add(document)
                 session.commit()
-            logger.error(f"Failed to process Document {document_id}: {str(e)}")
+            logger.error(f"[{correlation_id}] Failed to process Document {document_id}: {str(e)}")
             raise Exception(str(e))
         

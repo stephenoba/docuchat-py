@@ -9,15 +9,15 @@ LOG_DIR.mkdir(exist_ok=True)
 # Common Formatter
 # File formatter includes more detail
 FILE_FORMATTER = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(pathname)s:%(lineno)d - %(message)s"
+    "[%(correlation_id)s] %(asctime)s - %(name)s - %(levelname)s - %(pathname)s:%(lineno)d - %(message)s"
 )
 # Console formatter is cleaner for quick reading
 CONSOLE_FORMATTER = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "[%(correlation_id)s] %(asctime)s - %(name)s - %(levelname)s - %(message)s",
     datefmt="%H:%M:%S"
 )
 
-def setup_logger(name, log_file, level=logging.INFO):
+def setup_logger(name, log_file, level=logging.INFO, extra=None):
     """Function to setup as many loggers as you want"""
     
     # Create the logger

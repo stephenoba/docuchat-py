@@ -11,8 +11,9 @@ from app.core.security import scrub_sensitive_data
 async def http_exception_handler(request: Request, exc: HTTPException):
     detail = str(exc.detail)
     error_code = detail.upper().replace(" ", "_")
+    correlation_id = request.headers.get("X-Correlation-ID")
     
-    logger.warning(f"[HTTP {exc.status_code}] {request.method} {request.url.path} - {detail}")
+    logger.warning(f"[{correlation_id}] [HTTP {exc.status_code}] {request.method} {request.url.path} - {detail}")
 
     return JSONResponse(
         status_code=exc.status_code,
@@ -30,6 +31,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     details = []
+    correlation_id = request.headers.get("X-Correlation-ID")
     for error in exc.errors():
         field = ".".join(str(loc) for loc in error["loc"] if loc != "body")
         details.append(
@@ -40,7 +42,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
         )
 
-    logger.warning(f"[Validation Error] {request.method} {request.url.path} - {len(details)} fields failed")
+    logger.warning(f"[{correlation_id}] [Validation Error] {request.method} {request.url.path} - {len(details)} fields failed")
     
     return JSONResponse(
         status_code=422,
@@ -55,7 +57,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 async def generic_exception_handler(request: Request, exc: Exception):
-    logger.exception(f"[Unhandled Error] {request.method} {request.url.path} - {str(exc)}")
+    correlation_id = request.headers.get("X-Correlation-ID")
+    logger.exception(f"[{correlation_id}] [Unhandled Error] {request.method} {request.url.path} - {str(exc)}")
     return JSONResponse(
         status_code=500,
         content=ErrorResponse(

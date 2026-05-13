@@ -2,7 +2,7 @@ from typing import Annotated, List
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi_events.dispatcher import dispatch
 from sqlmodel import select, and_, desc, asc, func
 from celery.result import AsyncResult
@@ -29,6 +29,7 @@ document_router = APIRouter(dependencies=[Depends(general_limiter)])
 )
 
 async def create_document(
+    request: Request,
     user: Annotated[User, Depends(PermissionChecker("documents:create"))],
     data: DocumentCreate,
 ):
@@ -46,12 +47,14 @@ async def create_document(
         "filename": document.filename,
         "file_size": document.file_size_bytes,
         "timestamp": datetime.now().isoformat(),
+        "correlation_id": str(request.state.correlation_id)
     }
     dispatch(DOCUMENT_EVENTS.CREATED, payload={"user_id": user.id, **metadata})
 
     task = process_document.delay(
         document_id=str(document.id),
         user_id=str(user.id),
+        correlation_id=str(request.state.correlation_id)
     )
 
     response_data = DocumentResponse.model_validate(document)

@@ -7,7 +7,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import joinedload, selectinload
 
-from app.core.logger import default_logger as logger
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -114,8 +113,7 @@ class QueryManager(DBManager):
                 if not session:
                     await s.commit()
                 return True
-            except Exception as e:
-                logger.error(f"Error deleting all {self.model.__name__}s: {e}")
+            except Exception:
                 if not session:
                     await s.rollback()
                 return False
