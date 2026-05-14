@@ -57,7 +57,8 @@ async def generate_embeddings(
             tokens_used = usage.get("total_tokens", 0)
 
             # Emit event for monitoring/billing
-            dispatch(
+            from app.core.utils import safe_dispatch
+            safe_dispatch(
                 AI_EVENTS.EMBEDDING_GENERATED,
                 payload={
                     "user_id": user_id,
@@ -86,6 +87,58 @@ async def generate_embeddings(
     return all_embeddings
 
 
+def generate_embeddings_sync(
+    texts: List[str], user_id: Optional[str] = None, document_id: Optional[str] = None
+) -> List[List[float]]:
+    """Sync version of generate_embeddings."""
+    if not texts:
+        return []
+
+    from app.services.breaker import openai_request_sync
+    BATCH_SIZE = 100
+    all_embeddings = []
+
+    for i in range(0, len(texts), BATCH_SIZE):
+        batch_texts = texts[i : i + BATCH_SIZE]
+        try:
+            response = openai_request_sync(
+                method="POST",
+                path="/embeddings",
+                body={
+                    "model": MODEL,
+                    "input": batch_texts,
+                    "encoding_format": "float",
+                },
+            )
+
+            data = response.json()
+            sorted_embeddings = sorted(data.get("data", []), key=lambda x: x["index"])
+            embeddings = [emb["embedding"] for emb in sorted_embeddings]
+            all_embeddings.extend(embeddings)
+
+            usage = data.get("usage", {})
+            tokens_used = usage.get("total_tokens", 0)
+
+            from app.core.utils import safe_dispatch
+            safe_dispatch(
+                AI_EVENTS.EMBEDDING_GENERATED,
+                payload={
+                    "user_id": user_id,
+                    "document_id": document_id,
+                    "model": MODEL,
+                    "tokens_used": tokens_used,
+                    "cost_usd": (tokens_used / 1_000_000) * 0.02,
+                    "cached": False,
+                    "batch_size": len(batch_texts),
+                },
+            )
+        except Exception as e:
+            logger.error(f"Error generating embeddings (sync): {e}")
+            raise
+
+    return all_embeddings
+
+
 async def generate_embedding_cached(
     text_content: str, user_id: Optional[str] = None, document_id: Optional[str] = None
 ) -> List[float]:
@@ -109,6 +162,25 @@ async def generate_embedding_cached(
     await cache_set(cache_key, embedding, ttl_seconds=CACHE_TTL[EMBEDDING])
     logger.debug("Embedding cached", extra={"hash": hash_val[:12]})
 
+    return embedding
+
+
+def generate_embedding_cached_sync(
+    text_content: str, user_id: Optional[str] = None, document_id: Optional[str] = None
+) -> List[float]:
+    """Sync version of generate_embedding_cached."""
+    from app.extensions.cache_service import sync_cache_get, sync_cache_set
+    hash_val = content_hash(text_content)
+    cache_key = f"embed:{hash_val}"
+
+    cached = sync_cache_get(cache_key)
+    if cached:
+        return cached
+
+    embeddings = generate_embeddings_sync([text_content], user_id, document_id)
+    embedding = embeddings[0]
+
+    sync_cache_set(cache_key, embedding, ttl_seconds=CACHE_TTL[EMBEDDING])
     return embedding
 
 
@@ -157,6 +229,37 @@ async def generate_embeddings_batch_cached(
     return results  # type: ignore
 
 
+def generate_embeddings_batch_cached_sync(
+    texts: List[str], user_id: Optional[str] = None, document_id: Optional[str] = None
+) -> List[List[float]]:
+    """Sync version of generate_embeddings_batch_cached."""
+    from app.extensions.cache_service import sync_cache_get, sync_cache_set
+    results: List[Optional[List[float]]] = [None] * len(texts)
+    uncached: List[dict] = []
+
+    for i, t in enumerate(texts):
+        hash_val = content_hash(t)
+        cached = sync_cache_get(f"embed:{hash_val}")
+        if cached:
+            results[i] = cached
+        else:
+            uncached.append({"index": i, "text": t})
+
+    if uncached:
+        batch_texts = [u["text"] for u in uncached]
+        new_embeddings = generate_embeddings_sync(batch_texts, user_id, document_id)
+
+        for i, emb in enumerate(new_embeddings):
+            original_idx = uncached[i]["index"]
+            original_text = uncached[i]["text"]
+            hash_val = content_hash(original_text)
+
+            sync_cache_set(key=f"embed:{hash_val}", value=emb, ttl_seconds=CACHE_TTL[EMBEDDING])
+            results[original_idx] = emb
+
+    return results  # type: ignore
+
+
 async def store_chunk_embedding(chunk_id: str, embedding: List[float]) -> None:
     """
     Updates a single chunk with its embedding vector.
@@ -181,3 +284,15 @@ async def store_chunk_embeddings_batch(chunks: List[dict]) -> None:
                     text("UPDATE chunk SET embedding = :embedding WHERE id = :id"),
                     {"embedding": str(chunk["embedding"]), "id": chunk["id"]},
                 )
+
+
+def store_chunk_embeddings_batch_sync(chunks: List[dict]) -> None:
+    """Sync version of store_chunk_embeddings_batch."""
+    from app.models.dbmanager import sync_session_factory
+    with sync_session_factory() as session:
+        for chunk in chunks:
+            session.execute(
+                text("UPDATE chunk SET embedding = :embedding WHERE id = :id"),
+                {"embedding": str(chunk["embedding"]), "id": chunk["id"]},
+            )
+        session.commit()

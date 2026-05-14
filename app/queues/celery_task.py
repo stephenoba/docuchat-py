@@ -1,11 +1,9 @@
 import time
-import asyncio
 from uuid import UUID
 
 from sqlalchemy import delete
 from sqlalchemy.orm import sessionmaker
 from celery import Celery
-from fastapi_events.dispatcher import dispatch
 
 from app.core.config import get_settings, DOCUMENT_EVENTS
 from app.models.dbmanager import sync_engine
@@ -116,28 +114,33 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
             session.commit() # Commit to get Chunk IDs
             self.update_state(state="PROGRESS", meta={"current": 50, "total": 100, "status": "Chunks stored"})
 
-            # Step 5: Generate embeddings
+            # Step 5 & 6: Generate and Store embeddings (Sync)
             chunk_texts = [c['content'] for c in chunks]
-            embeddings = asyncio.run(generate_embeddings_batch_cached(
-                chunk_texts,
-                user_id=str(user_id),
-                document_id=str(document_id)
-            ))
-            self.update_state(state="PROGRESS", meta={"current": 85, "total": 100, "status": "Embeddings generated"})
-
-            # Step 6: Store embeddings
+            
             # Fetch stored chunks to get their IDs
             from sqlalchemy import select
             stmt = select(Chunk).where(Chunk.document_id == document_id).order_by(Chunk.index.asc())
             stored_chunks = session.execute(stmt).scalars().all()
 
-            asyncio.run(store_chunk_embeddings_batch([
+            from app.services.embedding import (
+                generate_embeddings_batch_cached_sync,
+                store_chunk_embeddings_batch_sync
+            )
+            
+            embeddings = generate_embeddings_batch_cached_sync(
+                chunk_texts,
+                user_id=str(user_id),
+                document_id=str(document_id)
+            )
+            
+            store_chunk_embeddings_batch_sync([
                 {
                     "id": str(c.id),
                     "embedding": embeddings[i]
                 } for i, c in enumerate(stored_chunks)
-            ]))
-            self.update_state(state="PROGRESS", meta={"current": 95, "total": 100, "status": "Embeddings stored"})
+            ])
+
+            self.update_state(state="PROGRESS", meta={"current": 95, "total": 100, "status": "Embeddings processed"})
 
             # Step 7: Mark complete
             document.status = DocumentStatus.READY.value
@@ -149,8 +152,8 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
             duration_ms = int((time.time() - start_time) * 1000)
 
             # Emit completion event with metrics
-            # Note: local_handler won't bridge processes unless a remote backend is configured
-            dispatch(DOCUMENT_EVENTS.PROCESSED.value, payload={
+            from app.core.utils import safe_dispatch
+            safe_dispatch(DOCUMENT_EVENTS.PROCESSED.value, payload={
                 "document_id": str(document_id),
                 "user_id": str(user_id),
                 "correlation_id": str(correlation_id),

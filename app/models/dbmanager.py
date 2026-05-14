@@ -28,6 +28,9 @@ async_engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG)
 
 async_session = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
+from sqlalchemy.orm import sessionmaker
+sync_session_factory = sessionmaker(bind=sync_engine, expire_on_commit=False)
+
 
 class DBManager:
     def __init__(self):

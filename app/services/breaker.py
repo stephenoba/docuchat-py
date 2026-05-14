@@ -58,9 +58,9 @@ async def openai_request(method: str, path: str, body: Any = {}):
         raise Exception("OpenAI is temporarily unavailable. Please try again shortly.")
 
 
-def openai_request_sync(path: str, body: Any):
+def openai_request_sync(method: str, path: str, body: Any = {}):
     """Sync version for Celery tasks"""
     try:
-        return openai_breaker.call(_call_openai_sync, path, body)
+        return openai_breaker.call(_call_openai_sync, method, path, body)
     except pybreaker.CircuitBreakerError:
         raise Exception("OpenAI is temporarily unavailable. Please try again shortly.")

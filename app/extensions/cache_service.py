@@ -1,7 +1,7 @@
 import json
 from typing import Any, TypeVar, Optional, Callable
 
-from app.extensions.redis import redis_client as cache_redis
+from app.extensions.redis import redis_client as cache_redis, sync_redis_client
 
 
 T = TypeVar("T")
@@ -101,3 +101,21 @@ async def cache_del_pattern(pattern: str) -> None:
 async def cache_clear():
     """Clear the cache."""
     await cache_redis.flushdb()
+
+
+def sync_cache_get(key: str) -> Optional[T]:
+    """Sync version of cache_get."""
+    prefixed_key = _get_prefixed_key(key)
+    raw = sync_redis_client.get(prefixed_key)
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def sync_cache_set(key: str, value: Any, ttl_seconds: int) -> None:
+    """Sync version of cache_set."""
+    prefixed_key = _get_prefixed_key(key)
+    sync_redis_client.set(prefixed_key, json.dumps(value), ex=ttl_seconds)
