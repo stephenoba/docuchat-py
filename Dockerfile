@@ -26,7 +26,13 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Copy the application code
 COPY . .
 
+# Set the entrypoint
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 8000
 
-# Default command (can be overridden in docker-compose)
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+# Default command
 CMD ["fastapi", "run", "app/main.py", "--port", "8000", "--host", "0.0.0.0"]

@@ -15,12 +15,14 @@ async def test_list_documents_filtering_and_sorting(client: AsyncClient):
     
     # Create test documents
     docs = [
-        {"title": "Banana", "content": "Yellow fruit", "filename": "b.txt"},
-        {"title": "Apple", "content": "Red fruit", "filename": "a.txt"},
-        {"title": "Cherry", "content": "Small fruit", "filename": "c.txt"},
+        {"title": "Banana", "content": b"Yellow fruit", "filename": "b.txt"},
+        {"title": "Apple", "content": b"Red fruit", "filename": "a.txt"},
+        {"title": "Cherry", "content": b"Small fruit", "filename": "c.txt"},
     ]
     for doc in docs:
-        await client.post("/api/v1/document", json=doc, headers=headers)
+        files = {"file": (doc["filename"], doc["content"], "text/plain")}
+        data = {"title": doc["title"]}
+        await client.post("/api/v1/document", data=data, files=files, headers=headers)
 
     # 1. Test search
     resp = await client.get("/api/v1/document?search=apple", headers=headers)

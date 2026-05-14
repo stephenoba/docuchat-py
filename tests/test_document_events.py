@@ -15,8 +15,9 @@ async def test_document_lifecycle_events(client: AsyncClient):
     headers = await get_auth_headers(client)
     
     # 1. Created & Processed
-    create_payload = {"title": "Lifecycle Test", "content": "This is some test content for lifecycle events."}
-    create_resp = await client.post("/api/v1/document", json=create_payload, headers=headers)
+    data = {"title": "Lifecycle Test"}
+    files = {"file": ("lifecycle.txt", b"This is some test content for lifecycle events.", "text/plain")}
+    create_resp = await client.post("/api/v1/document", data=data, files=files, headers=headers)
     assert create_resp.status_code == 202
     doc_id = create_resp.json()["data"]["id"]
     

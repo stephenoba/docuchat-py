@@ -15,12 +15,9 @@ async def get_auth_headers(client: AsyncClient, email: str = "doc_test@example.c
 @pytest.mark.asyncio
 async def test_create_document_success(client: AsyncClient):
     headers = await get_auth_headers(client)
-    payload = {
-        "title": "Test Document",
-        "content": "This is a test content",
-        "filename": "test.txt",
-    }
-    response = await client.post("/api/v1/document", json=payload, headers=headers)
+    files = {"file": ("test.txt", b"This is a test content", "text/plain")}
+    data = {"title": "Test Document"}
+    response = await client.post("/api/v1/document", data=data, files=files, headers=headers)
     assert response.status_code == 202
     body = response.json()
     assert body["success"] is True
@@ -33,10 +30,16 @@ async def test_list_documents_success(client: AsyncClient):
     headers = await get_auth_headers(client, email="list@example.com")
     # Create two documents
     await client.post(
-        "/api/v1/document", json={"title": "Doc 1", "content": "C1"}, headers=headers
+        "/api/v1/document", 
+        data={"title": "Doc 1"}, 
+        files={"file": ("doc1.txt", b"C1", "text/plain")}, 
+        headers=headers
     )
     await client.post(
-        "/api/v1/document", json={"title": "Doc 2", "content": "C2"}, headers=headers
+        "/api/v1/document", 
+        data={"title": "Doc 2"}, 
+        files={"file": ("doc2.txt", b"C2", "text/plain")}, 
+        headers=headers
     )
 
     response = await client.get("/api/v1/document", headers=headers)
@@ -55,7 +58,8 @@ async def test_get_document_success(client: AsyncClient):
     headers = await get_auth_headers(client, email="get@example.com")
     create_resp = await client.post(
         "/api/v1/document",
-        json={"title": "Target", "content": "Find me"},
+        data={"title": "Target"},
+        files={"file": ("target.txt", b"Find me", "text/plain")},
         headers=headers,
     )
     doc_id = create_resp.json()["data"]["id"]
@@ -72,7 +76,8 @@ async def test_update_document_success(client: AsyncClient):
     headers = await get_auth_headers(client, email="update@example.com")
     create_resp = await client.post(
         "/api/v1/document",
-        json={"title": "Old Title", "content": "Old Content"},
+        data={"title": "Old Title"},
+        files={"file": ("old.txt", b"Old Content", "text/plain")},
         headers=headers,
     )
     doc_id = create_resp.json()["data"]["id"]
@@ -90,7 +95,8 @@ async def test_delete_document_soft(client: AsyncClient):
     headers = await get_auth_headers(client, email="delete@example.com")
     create_resp = await client.post(
         "/api/v1/document",
-        json={"title": "To Delete", "content": "Bye"},
+        data={"title": "To Delete"},
+        files={"file": ("delete.txt", b"Bye", "text/plain")},
         headers=headers,
     )
     doc_id = create_resp.json()["data"]["id"]

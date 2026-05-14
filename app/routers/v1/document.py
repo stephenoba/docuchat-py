@@ -1,7 +1,7 @@
 from typing import Annotated, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, File, UploadFile, Form
 from fastapi_events.dispatcher import dispatch
 from sqlmodel import select, and_, desc, asc, func
 from celery.result import AsyncResult
@@ -9,7 +9,7 @@ from celery.result import AsyncResult
 from app.auth import PermissionChecker
 from app.models.models import User, Document, DocumentStatus
 from app.schemas import SuccessResponse
-from app.schemas.document import DocumentCreate, DocumentUpdate, DocumentResponse, DocumentStatusUpdate
+from app.schemas.document import DocumentUpdate, DocumentResponse, DocumentStatusUpdate
 from app.models.dbmanager import async_session
 from app.queues.celery_task import process_document
 from app.core.config import DOCUMENT_EVENTS
@@ -19,26 +19,29 @@ from app.dependencies.rate_limiter import general_limiter, upload_limiter
 
 document_router = APIRouter(dependencies=[Depends(general_limiter)])
 
-
-
 @document_router.post(
     "",
     response_model=SuccessResponse[DocumentResponse],
     status_code=status.HTTP_202_ACCEPTED,
     dependencies=[Depends(upload_limiter)],
 )
-
 async def create_document(
     request: Request,
     user: Annotated[User, Depends(PermissionChecker("documents:create"))],
-    data: DocumentCreate,
+    file: UploadFile = File(...),
+    title: str = Form(...),
 ):
+    # Read file content
+    content = await file.read()
+    filename = file.filename or title
+    
     document = await Document.objects.create(
         user_id=user.id,
-        title=data.title,
-        content=data.content,
-        filename=data.filename or data.title,
-        file_size_bytes=len(data.content.encode("utf-8")),
+        title=title,
+        content=content,
+        filename=filename,
+        mime_type=file.content_type,
+        file_size_bytes=len(content),
     )
 
     # Log and Dispatch

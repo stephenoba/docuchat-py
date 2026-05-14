@@ -8,6 +8,8 @@ from app.core.logger import api_logger as logger
 from app.middleware.webhook import verify_webhook_signature
 from app.models.models import WebhookEvent, WebhookEventStatus
 
+from app.core.utils import utcnow
+
 settings = get_settings()
 webhook_router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -39,7 +41,7 @@ async def process_webhook_event(event_id: str, payload: dict):
         await WebhookEvent.objects.update_by_id(
             event_id,
             status=WebhookEventStatus.SUCCESS.value,
-            processed_at=datetime.now(),
+            processed_at=utcnow(),
         )
 
     except Exception as e:

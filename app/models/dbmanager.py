@@ -94,7 +94,7 @@ class QueryManager(DBManager):
 
     async def update(self, model: SQLModel, session: AsyncSession = None):
         if hasattr(model, "updated_at"):
-            model.updated_at = datetime.now()
+            model.updated_at = utcnow()
         return await self.save(model, session=session)
 
     async def delete(self, model: SQLModel, session: AsyncSession = None):

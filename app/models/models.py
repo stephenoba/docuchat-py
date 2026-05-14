@@ -216,7 +216,7 @@ class Document(SQLModel, table=True):
     )
     title: str
     filename: str
-    content: str
+    content: bytes
     mime_type: str | None = None
     file_size_bytes: int | None = None
     chunk_count: int = Field(default=0)

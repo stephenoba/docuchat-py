@@ -5,15 +5,8 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
-class DocumentCreate(BaseModel):
-    title: str
-    content: str
-    filename: Optional[str] = None
-
-
 class DocumentUpdate(BaseModel):
     title: Optional[str] = None
-    content: Optional[str] = None
 
 
 class DocumentStatusUpdate(BaseModel):

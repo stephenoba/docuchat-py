@@ -1,19 +1,18 @@
-# NOTE (TO SELF): consider using an alternative like taskiq or arq for async support
+import time
+import asyncio
 from uuid import UUID
 
 from sqlalchemy import delete
 from sqlalchemy.orm import sessionmaker
 from celery import Celery
+from fastapi_events.dispatcher import dispatch
 
-from app.core.config import get_settings
+from app.core.config import get_settings, DOCUMENT_EVENTS
 from app.models.dbmanager import sync_engine
 from app.models.models import Document, DocumentStatus, Chunk
-import asyncio
-from app.core.utils import split_document
+from app.core.utils import detect_format, extract_text, split_document
 from app.core.logger import task_logger as logger
-from app.services.embedding import generate_embeddings_batch_cached
-# from fastapi_events.dispatcher import dispatch
-# from config import DOCUMENT_EVENTS
+from app.services.embedding import generate_embeddings_batch_cached, store_chunk_embeddings_batch
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine, expire_on_commit=False)
 settings = get_settings()
@@ -38,80 +37,157 @@ app = Celery(
     retry_jitter=True,
 )
 def process_document(self, document_id: str, user_id: str, correlation_id: str):
+    start_time = time.time()
     document_id = UUID(document_id)
     user_id = UUID(user_id)
     correlation_id = UUID(correlation_id)
 
     with SessionLocal() as session:
+        # Step 1: Mark as processing
         document = session.get(Document, document_id)
         if not document:
-            raise ValueError(f"Document with id {document_id} not found")
-        
-        logger.info(f"[{correlation_id}] Starting processing for Document {document_id}")
-        
+            logger.error(f"[{correlation_id}] Document {document_id} not found")
+            return {"success": False, "error": "Document not found"}
+
+        logger.info(f"[{correlation_id}] Document processing started", extra={
+            "correlationId": str(correlation_id),
+            "documentId": str(document_id),
+            "userId": str(user_id)
+        })
+
         try:
             document.status = DocumentStatus.PROCESSING.value
             session.add(document)
             session.commit()
+            self.update_state(state="PROGRESS", meta={"current": 5, "total": 100, "status": "Processing"})
 
-            content = document.content
-            
-            logger.info(f"[{correlation_id}] Splitting Document {document_id}")
-            self.update_state(state="PROGRESS", meta={"current": 10, "total": 100, "status": "Splitting document"})
+            # Step 2: Extract text
+            format = detect_format(document.filename)
+            # content is stored as bytes/string in DB? 
+            # In Document model, 'content' is str. extract_text expects bytes.
+            extraction = extract_text(document.content, format)
+            text = extraction['text']
+            page_count = extraction['page_count']
+            self.update_state(state="PROGRESS", meta={"current": 15, "total": 100, "status": "Text extracted"})
 
-            chunk_data = split_document(
-                content,
+            logger.info(f"[{correlation_id}] Text extracted", extra={
+                "correlationId": str(correlation_id),
+                "documentId": str(document_id),
+                "format": format,
+                "textLength": len(text),
+                "pageCount": page_count
+            })
+
+            # Step 3: Chunk the text
+            chunks = split_document(
+                text,
                 chunk_size=settings.DOC_PROCESSING_CHUNK_SIZE,
                 chunk_overlap=settings.DOC_PROCESSING_CHUNK_OVERLAP,
+                min_chunk_tokens=50,
                 model_name=settings.OPENAI_MODEL
             )
-            chunk_length = len(chunk_data)
-            
-            self.update_state(state="PROGRESS", meta={"current": 40, "total": 100, "status": "Storing chunks"})
-            logger.info(f"[{correlation_id}] Storing {chunk_length} chunks for Document {document_id}")
-        
+            self.update_state(state="PROGRESS", meta={"current": 30, "total": 100, "status": "Document chunked"})
+
+            chunk_count = len(chunks)
+            avg_tokens = 0
+            if chunk_count > 0:
+                avg_tokens = sum(c['token_count'] for c in chunks) // chunk_count
+
+            logger.info(f"[{correlation_id}] Document chunked", extra={
+                "correlationId": str(correlation_id),
+                "documentId": str(document_id),
+                "chunkCount": chunk_count,
+                "avgTokens": avg_tokens
+            })
+
+            # Step 4: Store chunks in database
+            # Delete old chunks
             session.execute(delete(Chunk).where(Chunk.document_id == document_id))
-            
-            # Generate embeddings for all chunks in a single batch call
-            # We use asyncio.run to call the async service from the sync Celery task
-            logger.info(f"[{correlation_id}] Generating embeddings for {chunk_length} chunks")
-            self.update_state(state="PROGRESS", meta={"current": 60, "total": 100, "status": "Generating embeddings"})
-            
-            embeddings = asyncio.run(generate_embeddings_batch_cached(
-                [c["content"] for c in chunk_data], 
-                user_id=str(user_id), 
-                document_id=str(document_id)
-            ))
             
             new_chunks = [
                 Chunk(
-                    document_id=document_id, 
-                    content=chunk_data[index]["content"], 
-                    token_count=chunk_data[index]["token_count"],
-                    index=index,
-                    embedding=embeddings[index]
-                ) for index in range(chunk_length)
+                    document_id=document_id,
+                    index=c['index'],
+                    content=c['content'],
+                    token_count=c['token_count']
+                ) for c in chunks
             ]
             session.add_all(new_chunks)
+            session.commit() # Commit to get Chunk IDs
+            self.update_state(state="PROGRESS", meta={"current": 50, "total": 100, "status": "Chunks stored"})
 
+            # Step 5: Generate embeddings
+            chunk_texts = [c['content'] for c in chunks]
+            embeddings = asyncio.run(generate_embeddings_batch_cached(
+                chunk_texts,
+                user_id=str(user_id),
+                document_id=str(document_id)
+            ))
+            self.update_state(state="PROGRESS", meta={"current": 85, "total": 100, "status": "Embeddings generated"})
+
+            # Step 6: Store embeddings
+            # Fetch stored chunks to get their IDs
+            from sqlalchemy import select
+            stmt = select(Chunk).where(Chunk.document_id == document_id).order_by(Chunk.index.asc())
+            stored_chunks = session.execute(stmt).scalars().all()
+
+            asyncio.run(store_chunk_embeddings_batch([
+                {
+                    "id": str(c.id),
+                    "embedding": embeddings[i]
+                } for i, c in enumerate(stored_chunks)
+            ]))
+            self.update_state(state="PROGRESS", meta={"current": 95, "total": 100, "status": "Embeddings stored"})
+
+            # Step 7: Mark complete
             document.status = DocumentStatus.READY.value
-            document.chunk_count = chunk_length
+            document.chunk_count = chunk_count
             session.add(document)
             session.commit()
-            
-            self.update_state(state="PROGRESS", meta={"current": 100, "total": 100, "status": "Completed"})
-            logger.info(f"[{correlation_id}] Successfully processed Document {document_id}")
-            # TODO: Figure out a way to pass context here for dispatching events
-            # dispatch(DOCUMENT_EVENTS.PROCESSED, payload={"user_id": user_id, "document_id": document_id, "chunk_count": chunk_length})
-            return {"success": True, "chunk_length": chunk_length}
-            
+            self.update_state(state="PROGRESS", meta={"current": 100, "total": 100, "status": "Complete"})
+
+            duration_ms = int((time.time() - start_time) * 1000)
+
+            # Emit completion event with metrics
+            # Note: local_handler won't bridge processes unless a remote backend is configured
+            dispatch(DOCUMENT_EVENTS.PROCESSED.value, payload={
+                "document_id": str(document_id),
+                "user_id": str(user_id),
+                "correlation_id": str(correlation_id),
+                "chunk_count": chunk_count,
+                "duration_ms": duration_ms,
+                "format": format,
+                "page_count": page_count,
+                "tokens": sum(c['token_count'] for c in chunks)
+            })
+
+            logger.info(f"[{correlation_id}] Document processing complete", extra={
+                "correlationId": str(correlation_id),
+                "documentId": str(document_id),
+                "chunkCount": chunk_count,
+                "durationMs": duration_ms
+            })
+
+            return {
+                "success": True,
+                "chunks": chunk_count,
+                "durationMs": duration_ms
+            }
+
         except Exception as e:
             session.rollback()
+            logger.error(f"[{correlation_id}] Document processing failed", extra={
+                "correlationId": str(correlation_id),
+                "documentId": str(document_id),
+                "error": str(e),
+                "attempt": self.request.retries + 1
+            })
+
             if self.request.retries >= self.max_retries:
                 document.status = DocumentStatus.FAILED.value
                 document.error = str(e)
                 session.add(document)
                 session.commit()
-            logger.error(f"[{correlation_id}] Failed to process Document {document_id}: {str(e)}")
-            raise Exception(str(e))
+            
+            raise e
         
