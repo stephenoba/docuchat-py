@@ -9,8 +9,8 @@ from app.services.embedding import (
 
 @pytest.mark.asyncio
 @patch("app.services.embedding.openai_request")
-@patch("app.services.embedding.dispatch")
-async def test_generate_embeddings(mock_dispatch, mock_openai_request):
+@patch("app.services.embedding.safe_dispatch")
+async def test_generate_embeddings(mock_safe_dispatch, mock_openai_request):
     # Mock AI response - Use MagicMock for the response itself 
     # because response.json() is a sync method.
     mock_response = MagicMock()
@@ -29,7 +29,7 @@ async def test_generate_embeddings(mock_dispatch, mock_openai_request):
     assert len(embeddings) == 2
     assert embeddings[0] == [0.1, 0.2, 0.3]
     assert embeddings[1] == [0.4, 0.5, 0.6]
-    assert mock_dispatch.called
+    assert mock_safe_dispatch.called
 
 @pytest.mark.asyncio
 @patch("app.services.embedding.cache_get")

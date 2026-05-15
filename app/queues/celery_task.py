@@ -15,6 +15,7 @@ from app.services.embedding import (
     store_chunk_embeddings_batch_sync
 )
 from app.core.utils import safe_dispatch
+from app.core.metrics import DOCUMENTS_PROCESSED, ACTIVE_QUEUE_JOBS
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine, expire_on_commit=False)
 settings = get_settings()
@@ -39,6 +40,14 @@ app = Celery(
     retry_jitter=True,
 )
 def process_document(self, document_id: str, user_id: str, correlation_id: str):
+    ACTIVE_QUEUE_JOBS.labels(queue='default').inc()
+    try:
+        return self._process_document_impl(document_id, user_id, correlation_id)
+    finally:
+        ACTIVE_QUEUE_JOBS.labels(queue='default').dec()
+
+
+def _process_document_impl(self, document_id: str, user_id: str, correlation_id: str):
     start_time = time.time()
     document_id = UUID(document_id)
     user_id = UUID(user_id)
@@ -165,6 +174,7 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
                 "durationMs": duration_ms
             })
 
+            DOCUMENTS_PROCESSED.labels(status='success').inc()
             return {
                 "success": True,
                 "chunks": chunk_count,
@@ -186,5 +196,6 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
                 session.add(document)
                 session.commit()
             
+            DOCUMENTS_PROCESSED.labels(status='failed').inc()
             raise e
         

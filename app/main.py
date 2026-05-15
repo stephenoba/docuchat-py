@@ -1,13 +1,15 @@
 import time
 import httpx
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi_events.middleware import EventHandlerASGIMiddleware
 from fastapi_events.handlers.local import local_handler
+from prometheus_client import generate_latest
 
 from app.core.config import get_settings
+from app.core.metrics import METRICS_REGISTRY
 from app.routers.v1 import api_v1_router
 from app.schemas import SuccessResponse
 from app.middleware.logging_middleware import api_logging_middleware
@@ -26,7 +28,10 @@ from app.core.utils import utcnow
 
 settings = get_settings()
 
+from app.middleware.metrics_middleware import MetricsMiddleware
+
 app = FastAPI()
+app.add_middleware(MetricsMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -104,5 +109,13 @@ async def ready_check():
             "checks": checks,
         },
         message="Service is ready" if all_healthy else "Service is degraded",
+    )
+
+
+@app.get("/metrics")
+async def metrics():
+    return Response(
+        content=generate_latest(METRICS_REGISTRY),
+        media_type="text/plain; version=0.0.4; charset=utf-8"
     )
 

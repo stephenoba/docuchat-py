@@ -7,6 +7,7 @@ from sqlalchemy import text
 
 from app.core.config import AI_EVENTS, get_settings
 from app.core.logger import client_logger as logger
+from app.core.utils import safe_dispatch
 from app.extensions.cache_service import CACHE_TTL, EMBEDDING, cache_get, cache_set
 from app.models.dbmanager import async_session
 from app.services.breaker import openai_request
@@ -57,7 +58,6 @@ async def generate_embeddings(
             tokens_used = usage.get("total_tokens", 0)
 
             # Emit event for monitoring/billing
-            from app.core.utils import safe_dispatch
             safe_dispatch(
                 AI_EVENTS.EMBEDDING_GENERATED,
                 payload={
@@ -119,7 +119,6 @@ def generate_embeddings_sync(
             usage = data.get("usage", {})
             tokens_used = usage.get("total_tokens", 0)
 
-            from app.core.utils import safe_dispatch
             safe_dispatch(
                 AI_EVENTS.EMBEDDING_GENERATED,
                 payload={

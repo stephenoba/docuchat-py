@@ -34,4 +34,12 @@ async def test_security_headers_on_api(client: AsyncClient):
     assert "Strict-Transport-Security" in response.headers
 
 
+@pytest.mark.asyncio
+async def test_metrics_endpoint(client: AsyncClient):
+    response = await client.get("/metrics")
+    assert response.status_code == 200
+    assert "text/plain" in response.headers["Content-Type"]
+    assert "docuchat_http_requests_total" in response.text
+
+
 

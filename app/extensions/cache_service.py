@@ -2,6 +2,7 @@ import json
 from typing import Any, TypeVar, Optional, Callable
 
 from app.extensions.redis import redis_client as cache_redis, sync_redis_client
+from app.core.metrics import CACHE_OPERATIONS
 
 
 T = TypeVar("T")
@@ -43,16 +44,21 @@ async def cache_get(key: str) -> Optional[T]:
     prefixed_key = _get_prefixed_key(key)
     raw = await cache_redis.get(prefixed_key)
     if not raw:
+        CACHE_OPERATIONS.labels(operation="get", result="miss").inc()
         return None
     try:
-        return json.loads(raw)
+        data = json.loads(raw)
+        CACHE_OPERATIONS.labels(operation="get", result="hit").inc()
+        return data
     except (json.JSONDecodeError, TypeError):
+        CACHE_OPERATIONS.labels(operation="get", result="error").inc()
         return None
 
 async def cache_set(key: str, value: Any, ttl_seconds: int) -> None:
     """Set a value in cache as JSON with a TTL."""
     prefixed_key = _get_prefixed_key(key)
     await cache_redis.set(prefixed_key, json.dumps(value), ex=ttl_seconds)
+    CACHE_OPERATIONS.labels(operation="set", result="success").inc()
 
 async def cache_remember(key: str, func: Callable, *args, ttl_seconds: int = None) -> T:
     """Get a value from cache or set it if not found."""
@@ -108,10 +114,14 @@ def sync_cache_get(key: str) -> Optional[T]:
     prefixed_key = _get_prefixed_key(key)
     raw = sync_redis_client.get(prefixed_key)
     if not raw:
+        CACHE_OPERATIONS.labels(operation="get", result="miss").inc()
         return None
     try:
-        return json.loads(raw)
+        data = json.loads(raw)
+        CACHE_OPERATIONS.labels(operation="get", result="hit").inc()
+        return data
     except (json.JSONDecodeError, TypeError):
+        CACHE_OPERATIONS.labels(operation="get", result="error").inc()
         return None
 
 
@@ -119,3 +129,4 @@ def sync_cache_set(key: str, value: Any, ttl_seconds: int) -> None:
     """Sync version of cache_set."""
     prefixed_key = _get_prefixed_key(key)
     sync_redis_client.set(prefixed_key, json.dumps(value), ex=ttl_seconds)
+    CACHE_OPERATIONS.labels(operation="set", result="success").inc()
