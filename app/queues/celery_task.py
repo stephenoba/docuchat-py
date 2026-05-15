@@ -1,7 +1,7 @@
 import time
 from uuid import UUID
 
-from sqlalchemy import delete
+from sqlalchemy import select, delete
 from sqlalchemy.orm import sessionmaker
 from celery import Celery
 
@@ -10,7 +10,11 @@ from app.models.dbmanager import sync_engine
 from app.models.models import Document, DocumentStatus, Chunk
 from app.core.utils import detect_format, extract_text, split_document
 from app.core.logger import task_logger as logger
-from app.services.embedding import generate_embeddings_batch_cached, store_chunk_embeddings_batch
+from app.services.embedding import (
+    generate_embeddings_batch_cached_sync,
+    store_chunk_embeddings_batch_sync
+)
+from app.core.utils import safe_dispatch
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine, expire_on_commit=False)
 settings = get_settings()
@@ -59,10 +63,8 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
             session.commit()
             self.update_state(state="PROGRESS", meta={"current": 5, "total": 100, "status": "Processing"})
 
-            # Step 2: Extract text
+            # Extract text
             format = detect_format(document.filename)
-            # content is stored as bytes/string in DB? 
-            # In Document model, 'content' is str. extract_text expects bytes.
             extraction = extract_text(document.content, format)
             text = extraction['text']
             page_count = extraction['page_count']
@@ -76,7 +78,7 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
                 "pageCount": page_count
             })
 
-            # Step 3: Chunk the text
+            # Chunk the text
             chunks = split_document(
                 text,
                 chunk_size=settings.DOC_PROCESSING_CHUNK_SIZE,
@@ -98,8 +100,7 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
                 "avgTokens": avg_tokens
             })
 
-            # Step 4: Store chunks in database
-            # Delete old chunks
+            # Store chunks in database
             session.execute(delete(Chunk).where(Chunk.document_id == document_id))
             
             new_chunks = [
@@ -114,18 +115,12 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
             session.commit() # Commit to get Chunk IDs
             self.update_state(state="PROGRESS", meta={"current": 50, "total": 100, "status": "Chunks stored"})
 
-            # Step 5 & 6: Generate and Store embeddings (Sync)
+            # Generate and Store embeddings (Sync)
             chunk_texts = [c['content'] for c in chunks]
             
             # Fetch stored chunks to get their IDs
-            from sqlalchemy import select
             stmt = select(Chunk).where(Chunk.document_id == document_id).order_by(Chunk.index.asc())
             stored_chunks = session.execute(stmt).scalars().all()
-
-            from app.services.embedding import (
-                generate_embeddings_batch_cached_sync,
-                store_chunk_embeddings_batch_sync
-            )
             
             embeddings = generate_embeddings_batch_cached_sync(
                 chunk_texts,
@@ -142,7 +137,7 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
 
             self.update_state(state="PROGRESS", meta={"current": 95, "total": 100, "status": "Embeddings processed"})
 
-            # Step 7: Mark complete
+            # Mark complete
             document.status = DocumentStatus.READY.value
             document.chunk_count = chunk_count
             session.add(document)
@@ -152,7 +147,6 @@ def process_document(self, document_id: str, user_id: str, correlation_id: str):
             duration_ms = int((time.time() - start_time) * 1000)
 
             # Emit completion event with metrics
-            from app.core.utils import safe_dispatch
             safe_dispatch(DOCUMENT_EVENTS.PROCESSED.value, payload={
                 "document_id": str(document_id),
                 "user_id": str(user_id),

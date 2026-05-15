@@ -5,7 +5,7 @@ from .document_extractor import (
     extract_text # noqa: F401
 )
 from .chunker import split_document # noqa: F401
-
+from app.core.logger import task_logger as logger
 
 def utcnow() -> datetime:
     """Return a naive UTC datetime."""
@@ -23,4 +23,4 @@ def safe_dispatch(event: str, payload: dict):
     except LookupError:
         # FastAPI-events requires a request context to find the event handler.
         # In background tasks, we just skip it or log it.
-        pass
+        logger.warning(f"FastAPI events not available in this context. Event {event} could not be dispatched")
