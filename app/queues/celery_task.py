@@ -15,7 +15,7 @@ from app.services.embedding import (
     store_chunk_embeddings_batch_sync
 )
 from app.core.utils import safe_dispatch
-from app.core.metrics import DOCUMENTS_PROCESSED, ACTIVE_QUEUE_JOBS
+from app.core.metrics import ACTIVE_QUEUE_JOBS
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine, expire_on_commit=False)
 settings = get_settings()

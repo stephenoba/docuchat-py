@@ -1,5 +1,4 @@
 import pytest
-from uuid import uuid4
 from unittest.mock import patch, AsyncMock
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.search import semantic_search

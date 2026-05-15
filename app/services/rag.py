@@ -1,6 +1,5 @@
 import time
 from typing import List, Optional
-from uuid import UUID
 from app.schemas.document import SearchResult, Citation, AssembledContext
 from app.schemas.conversation import RAGResponse, TokenUsage
 from app.core.logger import client_logger as logger

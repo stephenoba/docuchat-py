@@ -3,7 +3,6 @@ import json
 from uuid import uuid4
 from unittest.mock import patch, MagicMock
 from app.events.event_handlers import handle_doc_events
-from app.models import UsageLog
 from app.core.config import DOCUMENT_EVENTS
 
 @pytest.mark.asyncio
@@ -71,8 +70,7 @@ async def test_handle_doc_processed_event_failure():
     event = (DOCUMENT_EVENTS.PROCESSED.value, payload)
     
     with patch("app.events.event_handlers.async_session") as mock_session_cm, \
-         patch("app.events.event_handlers.DOCUMENTS_PROCESSED") as mock_metric, \
-         patch("app.models.UsageLog.objects.create") as mock_create:
+         patch("app.events.event_handlers.DOCUMENTS_PROCESSED") as mock_metric:
         
         mock_session = MagicMock()
         mock_session_cm.return_value.__aenter__.return_value = mock_session
