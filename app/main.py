@@ -22,13 +22,13 @@ from app.middleware.xss_middleware import XSSMiddleware
 from app.middleware.security_headers_middleware import SecurityHeadersMiddleware
 from app.models.dbmanager import async_engine
 from app.extensions.redis import redis_client
+from app.middleware.metrics_middleware import MetricsMiddleware
 
 import app.events  # noqa: F401
 from app.core.utils import utcnow
 
 settings = get_settings()
 
-from app.middleware.metrics_middleware import MetricsMiddleware
 
 app = FastAPI()
 app.add_middleware(MetricsMiddleware)

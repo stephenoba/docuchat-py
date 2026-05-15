@@ -1,7 +1,4 @@
-from prometheus_client import Counter, Histogram, Gauge, CollectorRegistry, REGISTRY, PROCESS_COLLECTOR, PLATFORM_COLLECTOR, GC_COLLECTOR
-
-# Collect default metrics (process, platform, gc)
-# These are already in the default REGISTRY, so we'll use that as our registry
+from prometheus_client import Counter, Histogram, Gauge, REGISTRY
 
 # Counter: total number of HTTP requests
 HTTP_REQUESTS_TOTAL = Counter(

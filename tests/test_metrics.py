@@ -1,6 +1,5 @@
 import pytest
 from httpx import AsyncClient
-from app.core.metrics import HTTP_REQUESTS_TOTAL, CACHE_OPERATIONS
 from app.extensions.cache_service import cache_get, cache_set
 
 

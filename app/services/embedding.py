@@ -2,7 +2,6 @@ import hashlib
 import math
 from typing import List, Optional
 
-from fastapi_events.dispatcher import dispatch
 from sqlalchemy import text
 
 from app.core.config import AI_EVENTS, get_settings

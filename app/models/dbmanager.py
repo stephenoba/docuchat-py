@@ -1,13 +1,13 @@
 import uuid
-from datetime import datetime
 from contextlib import asynccontextmanager
 
 from sqlmodel import SQLModel, select
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, joinedload, selectinload
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import joinedload, selectinload
 
 from app.core.config import get_settings
+from app.extensions.utils import utcnow
 
 settings = get_settings()
 # Ensure using aiosqlite for SQLite
@@ -28,7 +28,6 @@ async_engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG)
 
 async_session = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
-from sqlalchemy.orm import sessionmaker
 sync_session_factory = sessionmaker(bind=sync_engine, expire_on_commit=False)
 
 

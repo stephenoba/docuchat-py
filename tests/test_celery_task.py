@@ -1,7 +1,7 @@
 from unittest.mock import patch, MagicMock
 from uuid import uuid4
 
-from app.queues.celery_task import process_document, _process_document_impl
+from app.queues.celery_task import _process_document_impl
 from app.models.models import Document, DocumentStatus
 
 @patch("app.queues.celery_task.safe_dispatch")
