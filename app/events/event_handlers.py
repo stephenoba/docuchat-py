@@ -8,6 +8,7 @@ from app.core.config import AUTH_EVENTS, ADMIN_EVENTS
 from app.core.logger import default_logger as logger
 from app.models.dbmanager import async_session
 from app.core.utils import utcnow
+from app.core.metrics import DOCUMENTS_PROCESSED
 
 
 @local_handler.register(event_name=AUTH_EVENTS.USER_REGISTERED)
@@ -96,6 +97,11 @@ async def handle_doc_events(event: Event):
         user_id = payload.pop("user_id")
         # Extract action from doc:action
         action = event_name.split(":")[-1]
+
+        # Update Prometheus metric if processed
+        if action == "processed":
+            status = payload.get("status", "success")
+            DOCUMENTS_PROCESSED.labels(status=status).inc()
 
         async with async_session() as session:
             async with session.begin():

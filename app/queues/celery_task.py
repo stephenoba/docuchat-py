@@ -174,7 +174,6 @@ def _process_document_impl(self, document_id: str, user_id: str, correlation_id:
                 "durationMs": duration_ms
             })
 
-            DOCUMENTS_PROCESSED.labels(status='success').inc()
             return {
                 "success": True,
                 "chunks": chunk_count,
@@ -196,6 +195,12 @@ def _process_document_impl(self, document_id: str, user_id: str, correlation_id:
                 session.add(document)
                 session.commit()
             
-            DOCUMENTS_PROCESSED.labels(status='failed').inc()
+            safe_dispatch(DOCUMENT_EVENTS.PROCESSED.value, payload={
+                "document_id": str(document_id),
+                "user_id": str(user_id),
+                "correlation_id": str(correlation_id),
+                "status": "failed",
+                "error": str(e)
+            })
             raise e
         
