@@ -9,11 +9,11 @@ LOG_DIR.mkdir(exist_ok=True)
 # Common Formatter
 # File formatter includes more detail
 FILE_FORMATTER = logging.Formatter(
-    "[%(correlation_id)s] %(asctime)s - %(name)s - %(levelname)s - %(pathname)s:%(lineno)d - %(message)s - %(extra)s"
+    "%(asctime)s - %(name)s - %(levelname)s - %(pathname)s:%(lineno)d - %(message)s - %(extra)s"
 )
 # Console formatter is cleaner for quick reading
 CONSOLE_FORMATTER = logging.Formatter(
-    "[%(correlation_id)s] %(asctime)s - %(name)s - %(levelname)s - %(message)s - %(extra)s",
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(extra)s",
     datefmt="%H:%M:%S"
 )
 
