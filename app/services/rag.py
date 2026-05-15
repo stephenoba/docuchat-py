@@ -4,15 +4,30 @@ from app.schemas.document import SearchResult, Citation, AssembledContext
 CONTEXT_TOKEN_BUDGET = 3500
 
 
+def is_redundant(candidate: SearchResult, selected: List[SearchResult]) -> bool:
+    """
+    Check if a candidate chunk is redundant (adjacent to an already selected chunk from the same document).
+    """
+    return any(
+        s.document_id == candidate.document_id and abs(s.chunk_index - candidate.chunk_index) <= 1
+        for s in selected
+    )
+
+
 def assemble_context(search_results: List[SearchResult]) -> AssembledContext:
     """
     Selects the best chunks that fit within the token budget and formats them for the prompt.
+    Includes deduplication to avoid adjacent overlapping chunks.
     """
     selected: List[SearchResult] = []
     total_tokens = 0
 
     # search_results are expected to be already sorted by score descending from the search service
     for result in search_results:
+        # Deduplication: Skip if redundant
+        if is_redundant(result, selected):
+            continue
+
         if total_tokens + result.token_count > CONTEXT_TOKEN_BUDGET:
             break  # Budget exhausted
         
