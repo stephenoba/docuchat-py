@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker, joinedload, selectinload
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from app.core.config import get_settings
-from app.extensions.utils import utcnow
+from app.core.utils import utcnow
 
 settings = get_settings()
 # Ensure using aiosqlite for SQLite
