@@ -8,7 +8,7 @@ from app.models.dbmanager import async_engine
 
 @pytest.fixture
 async def session():
-    async with AsyncSession(async_engine) as session:
+    async with AsyncSession(async_engine, expire_on_commit=False) as session:
         yield session
         await session.rollback()
 
@@ -22,6 +22,7 @@ async def test_semantic_search_success(session: AsyncSession):
     user = User(username="testsearch", email="testsearch@example.com", password_hash="hash")
     session.add(user)
     await session.commit()
+    await session.refresh(user)
     
     doc = Document(
         user_id=user.id,
@@ -32,16 +33,25 @@ async def test_semantic_search_success(session: AsyncSession):
     )
     session.add(doc)
     await session.commit()
+    await session.refresh(doc)
     
     # Add chunks with embeddings
-    c1 = Chunk(document_id=doc.id, index=0, content="Apple is red", embedding=[1.0, 0.0, 0.0])
-    c2 = Chunk(document_id=doc.id, index=1, content="Banana is yellow", embedding=[0.0, 1.0, 0.0])
+    # Using 768 dimensions to match migration dc959ae8f0a6
+    vec1 = [0.0] * 768
+    vec1[0] = 1.0
+    vec2 = [0.0] * 768
+    vec2[1] = 1.0
+    
+    c1 = Chunk(document_id=doc.id, index=0, content="Apple is red", embedding=vec1)
+    c2 = Chunk(document_id=doc.id, index=1, content="Banana is yellow", embedding=vec2)
     session.add_all([c1, c2])
     await session.commit()
 
     # 2. Mock embedding generation for query
     query = "red fruit"
-    mock_embedding = [0.9, 0.1, 0.0]
+    mock_embedding = [0.0] * 768
+    mock_embedding[0] = 0.9
+    mock_embedding[1] = 0.1
     
     with patch("app.services.search.generate_embedding_cached", new_callable=AsyncMock) as mock_gen:
         mock_gen.return_value = mock_embedding
@@ -74,13 +84,16 @@ async def test_semantic_search_filters_by_user(session: AsyncSession):
     session.add_all([doc1, doc2])
     await session.commit()
     
-    c1 = Chunk(document_id=doc1.id, index=0, content="U1 Content", embedding=[1.0, 0.0])
-    c2 = Chunk(document_id=doc2.id, index=0, content="U2 Content", embedding=[1.0, 0.0])
+    vec = [0.0] * 768
+    vec[0] = 1.0
+    
+    c1 = Chunk(document_id=doc1.id, index=0, content="U1 Content", embedding=vec)
+    c2 = Chunk(document_id=doc2.id, index=0, content="U2 Content", embedding=vec)
     session.add_all([c1, c2])
     await session.commit()
 
     with patch("app.services.search.generate_embedding_cached", new_callable=AsyncMock) as mock_gen:
-        mock_gen.return_value = [1.0, 0.0]
+        mock_gen.return_value = vec
         
         # Search as U1
         results = await semantic_search(query="test", user_id=u1.id, session=session)
