@@ -1,5 +1,9 @@
 import pytest
 from httpx import AsyncClient
+from unittest.mock import patch, AsyncMock, MagicMock
+from uuid import UUID
+
+from app.schemas.conversation import RAGResponse, TokenUsage
 
 
 async def get_auth_headers(client: AsyncClient, email: str = "conv_test@example.com"):
@@ -102,14 +106,37 @@ async def test_send_message_success(client: AsyncClient):
     assert create_resp.status_code == 201
     conv_id = create_resp.json()["data"]["id"]
 
-    # Send message to that conversation
-    msg_resp = await client.post(
-        f"/api/v1/conversation/{conv_id}/messages",
-        json={"content": "Hello world from test"},
-        headers=headers,
+    # Mock RAG dependencies
+    mock_rag_resp = RAGResponse(
+        answer="I am an AI assistant",
+        citations=[],
+        tokens_used=TokenUsage(prompt=10, completion=10, total=20),
+        cost_usd=0.0001,
+        model="gpt-4o"
     )
-    assert msg_resp.status_code == 201
-    body = msg_resp.json()
-    assert body["data"]["content"] == "Hello world from test"
-    assert body["data"]["role"] == "user"
-    assert body["data"]["conversation_id"] == conv_id
+
+    with patch("app.services.conversation.semantic_search", new_callable=AsyncMock) as mock_search, \
+         patch("app.services.conversation.generate_rag_response", new_callable=AsyncMock) as mock_rag, \
+         patch("app.services.conversation.assemble_context") as mock_assemble:
+        
+        mock_search.return_value = []
+        mock_assemble_val = MagicMock()
+        mock_assemble_val.chunks = []
+        mock_assemble_val.citations = []
+        mock_assemble.return_value = mock_assemble_val
+        mock_rag.return_value = mock_rag_resp
+
+        # Send message to that conversation
+        msg_resp = await client.post(
+            f"/api/v1/conversation/{conv_id}/messages",
+            json={"content": "Hello world from test"},
+            headers=headers,
+        )
+        assert msg_resp.status_code == 201
+        body = msg_resp.json()
+        
+        assert "user_message" in body["data"]
+        assert "assistant_message" in body["data"]
+        assert body["data"]["user_message"]["content"] == "Hello world from test"
+        assert body["data"]["assistant_message"]["content"] == "I am an AI assistant"
+        assert body["data"]["user_message"]["conversation_id"] == conv_id

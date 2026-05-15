@@ -37,6 +37,10 @@ class MessageResponse(BaseModel):
     role: str
     content: str
     sources: Optional[str] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    cost_usd: Optional[float] = None
+    citations: Optional[list[Citation]] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

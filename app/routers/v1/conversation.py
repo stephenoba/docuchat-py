@@ -1,7 +1,7 @@
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlmodel import select, func
 
 from app.auth import PermissionChecker
@@ -17,6 +17,7 @@ from app.schemas.conversation import (
 from app.models.dbmanager import async_session
 from app.dependencies.rate_limiter import general_limiter, chat_limiter
 from app.core.utils import utcnow
+from app.services.conversation import send_message as send_message_service
 
 
 conversation_router = APIRouter(dependencies=[Depends(general_limiter)])
@@ -134,38 +135,35 @@ async def delete_conversation(
 
 @conversation_router.post(
     "/{conversation_id}/messages",
-    response_model=SuccessResponse[MessageResponse],
+    response_model=SuccessResponse[dict],
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(chat_limiter)],
 )
-
 async def send_message(
     user: Annotated[User, Depends(PermissionChecker("conversations:create"))],
     conversation_id: UUID,
     data: MessageCreate,
+    request: Request,
 ):
-    conversation = await Conversation.objects.get(id=conversation_id, user_id=user.id)
-    if not conversation:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found"
+    correlation_id = getattr(request.state, "correlation_id", "web-request")
+
+    async with async_session() as session:
+        result = await send_message_service(
+            session=session,
+            conversation_id=conversation_id,
+            user_id=user.id,
+            content=data.content,
+            document_id=data.document_id,
+            correlation_id=correlation_id
         )
 
-    if data.document_id:
-        document = await Document.objects.get(
-            id=data.document_id, user_id=user.id, deleted_at=None
-        )
-        if not document:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-            )
-
-    message = await Message.objects.create(
-        conversation_id=conversation_id,
-        role="user",
-        content=data.content,
-        document_id=data.document_id,
-    )
-    return SuccessResponse[MessageResponse](
-        data=MessageResponse.model_validate(message),
+    return SuccessResponse[dict](
+        data={
+            "user_message": MessageResponse.model_validate(result["user_message"]),
+            "assistant_message": {
+                **MessageResponse.model_validate(result["assistant_message"]).model_dump(),
+                "citations": result["citations"]
+            }
+        },
         message="Message sent successfully",
     )

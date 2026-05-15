@@ -2,10 +2,12 @@ import pytest
 import uuid
 from httpx import AsyncClient
 from sqlmodel import select
+from unittest.mock import patch, AsyncMock
 from app.dependencies.rate_limiter import auth_limiter, general_limiter, chat_limiter
 from app.auth import create_access_token
-from app.models import User, Role, UserRole, Conversation
+from app.models import User, Role, UserRole, Conversation, Message
 from app.models.dbmanager import async_session
+from app.core.utils import utcnow
 
 @pytest.mark.asyncio
 async def test_auth_rate_limit(client: AsyncClient):
@@ -81,12 +83,21 @@ async def test_chat_rate_limit_enterprise(client: AsyncClient):
         headers = {"Authorization": f"Bearer {token}"}
         url = f"/api/v1/conversation/{conv_id}/messages"
         
-        for i in range(2):
-            resp = await client.post(url, json={"content": "hi"}, headers=headers)
-            assert resp.status_code == 201
-            assert "RateLimit-Remaining" in resp.headers
+        mock_result = {
+            "user_message": Message(id=uuid.uuid4(), conversation_id=conv_id, role="user", content="hi", created_at=utcnow()),
+            "assistant_message": Message(id=uuid.uuid4(), conversation_id=conv_id, role="assistant", content="AI response", created_at=utcnow()),
+            "citations": []
+        }
+
+        with patch("app.routers.v1.conversation.send_message_service", new_callable=AsyncMock) as mock_service:
+            mock_service.return_value = mock_result
             
-        resp_429 = await client.post(url, json={"content": "hi"}, headers=headers)
-        assert resp_429.status_code == 429
+            for i in range(2):
+                resp = await client.post(url, json={"content": "hi"}, headers=headers)
+                assert resp.status_code == 201
+                assert "RateLimit-Remaining" in resp.headers
+                
+            resp_429 = await client.post(url, json={"content": "hi"}, headers=headers)
+            assert resp_429.status_code == 429
     finally:
         chat_limiter.tiered_limits = orig_chat
