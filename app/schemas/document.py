@@ -30,3 +30,13 @@ class DocumentResponse(BaseModel):
     task_id: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SearchResult(BaseModel):
+    chunk_id: UUID
+    document_id: UUID
+    document_title: str
+    content: str
+    chunk_index: int
+    score: float
+    token_count: int
