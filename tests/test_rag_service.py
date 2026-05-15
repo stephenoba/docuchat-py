@@ -1,7 +1,58 @@
 import pytest
 from uuid import uuid4
-from app.services.rag import assemble_context, CONTEXT_TOKEN_BUDGET
+from unittest.mock import patch, AsyncMock, MagicMock
+from app.services.rag import assemble_context, CONTEXT_TOKEN_BUDGET, generate_rag_response, AssembledContext
 from app.schemas.document import SearchResult
+
+
+@pytest.mark.asyncio
+async def test_generate_rag_response_success():
+    doc_id = uuid4()
+    context = AssembledContext(
+        chunks=[
+            SearchResult(
+                chunk_id=uuid4(),
+                document_id=doc_id,
+                document_title="Doc 1",
+                content="Chunk 0",
+                chunk_index=0,
+                score=0.9,
+                token_count=100
+            )
+        ],
+        context_text="[Source 1: \"Doc 1\", Section 1]\nChunk 0",
+        total_tokens=100,
+        citations=[]
+    )
+    
+    # Mock response
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "choices": [{"message": {"content": "The answer is 42"}}],
+        "usage": {
+            "prompt_tokens": 150,
+            "completion_tokens": 50,
+            "total_tokens": 200
+        }
+    }
+    
+    with patch("app.services.rag.openai_request", new_callable=AsyncMock) as mock_request, \
+         patch("app.services.rag.safe_dispatch") as mock_dispatch:
+        
+        mock_request.return_value = mock_resp
+        
+        response = await generate_rag_response(
+            question="What is the answer?",
+            context=context,
+            user_id=str(uuid4()),
+            conversation_id=str(uuid4()),
+            correlation_id="test-corr-id"
+        )
+        
+        assert response.answer == "The answer is 42"
+        assert response.tokens_used.total == 200
+        assert mock_request.called
+        assert mock_dispatch.called
 
 
 def test_assemble_context_within_budget():

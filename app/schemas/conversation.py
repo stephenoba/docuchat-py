@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.document import Citation
+
 
 class ConversationCreate(BaseModel):
     title: str
@@ -38,3 +40,17 @@ class MessageResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TokenUsage(BaseModel):
+    prompt: int
+    completion: int
+    total: int
+
+
+class RAGResponse(BaseModel):
+    answer: str
+    citations: list[Citation]
+    tokens_used: TokenUsage
+    cost_usd: float
+    model: str

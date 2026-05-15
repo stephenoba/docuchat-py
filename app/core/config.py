@@ -29,6 +29,7 @@ class DOCUMENT_EVENTS(Enum):
 
 class AI_EVENTS(Enum):
     EMBEDDING_GENERATED = "ai:embedding-generated"
+    CHAT_COMPLETED = "ai:chat-completed"
 
 
 class Settings(BaseSettings):
