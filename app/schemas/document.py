@@ -40,3 +40,19 @@ class SearchResult(BaseModel):
     chunk_index: int
     score: float
     token_count: int
+
+
+class Citation(BaseModel):
+    index: int
+    chunk_id: UUID
+    document_id: UUID
+    document_title: str
+    chunk_index: int
+    score: float
+
+
+class AssembledContext(BaseModel):
+    chunks: list[SearchResult]
+    context_text: str
+    total_tokens: int
+    citations: list[Citation]
