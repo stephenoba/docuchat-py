@@ -1,7 +1,6 @@
 import pytest
 from httpx import AsyncClient
 from unittest.mock import patch, AsyncMock, MagicMock
-from uuid import UUID
 
 from app.schemas.conversation import RAGResponse, TokenUsage
 

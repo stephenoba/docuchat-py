@@ -1,11 +1,11 @@
-from typing import Annotated, List, Optional
+from typing import Annotated, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlmodel import select, func
 
 from app.auth import PermissionChecker
-from app.models.models import User, Conversation, Message, Document
+from app.models.models import User, Conversation
 from app.schemas import SuccessResponse
 from app.schemas.conversation import (
     ConversationCreate,
